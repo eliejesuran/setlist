@@ -68,6 +68,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
     <span>Export Timing</span>
   </label>
   <button class="tbtn" id="btn-save" type="button"><span>💾</span><span class="lbl">Sauvegarder</span></button>
+  <button class="tbtn" id="btn-localsave" type="button" style="border-color:rgba(39,174,96,.4);color:#58d68d;background:rgba(39,174,96,.05);" title="Sauvegarde dans le navigateur — persiste sans télécharger"><span>&#128204;</span><span class="lbl" id="localsave-lbl">Sauvegarde auto</span></button>
   <button class="tbtn imp" id="btn-import" type="button"><span>📋</span><span class="lbl">Import texte</span></button>
   <button class="tbtn imp" id="btn-export" type="button"><span>⎘</span><span class="lbl">Export texte</span></button>
   <button class="tbtn" id="btn-theme" type="button" style="border-color:rgba(155,89,182,.5);color:#bb8fce;background:rgba(155,89,182,.05);"><span>&#127752;</span><span class="lbl">Thème</span></button>
@@ -399,6 +400,85 @@ function openThemePanel(){
   ov.style.display='flex';
 }
 document.getElementById('btn-theme').addEventListener('click',openThemePanel);
+
+/* ══ LOCALSTORAGE SAVE / RESTORE ══ */
+const LS_KEY = 'ssbbb_setlist_v1';
+
+function lsSave(){
+  const state = {
+    items,
+    headerBadges,
+    bandName:    $('band-name').value,
+    footerVenue: $('footer-venue').value,
+    savedAt:     new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    showSaveFlash();
+  } catch(e) { console.warn('localStorage save failed', e); }
+}
+
+function lsLoad(){
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return false;
+    const state = JSON.parse(raw);
+    if(state.items)         items         = state.items;
+    if(state.headerBadges)  headerBadges  = state.headerBadges;
+    if(state.bandName)      $('band-name').value      = state.bandName;
+    if(state.footerVenue)   $('footer-venue').value   = state.footerVenue;
+    return state.savedAt || true;
+  } catch(e) { return false; }
+}
+
+function lsClear(){
+  localStorage.removeItem(LS_KEY);
+  updateSaveStatus('Sauvegarde effacée');
+}
+
+function showSaveFlash(){
+  const btn = $('btn-localsave');
+  const lbl = $('localsave-lbl');
+  const now = new Date();
+  const hhmm = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  if(lbl) lbl.textContent = 'Sauvé ' + hhmm;
+  if(btn){ btn.style.borderColor='#58d68d'; btn.style.color='#58d68d'; }
+  setTimeout(()=>{ if(lbl) lbl.textContent='Sauvegarde auto'; }, 3000);
+}
+
+function updateSaveStatus(msg){
+  const lbl = $('localsave-lbl');
+  if(lbl){ lbl.textContent = msg; setTimeout(()=>{ lbl.textContent='Sauvegarde auto'; }, 2500); }
+}
+
+// Auto-save on every meaningful change (debounced 1.5s)
+let lsTimer = null;
+function scheduleAutoSave(){
+  clearTimeout(lsTimer);
+  lsTimer = setTimeout(lsSave, 1500);
+}
+
+// Patch existing renderList to trigger auto-save
+const _origRenderList = renderList;
+renderList = function(...args){
+  _origRenderList(...args);
+  scheduleAutoSave();
+};
+
+document.getElementById('btn-localsave').addEventListener('click', lsSave);
+$('band-name').addEventListener('input', scheduleAutoSave);
+$('footer-venue').addEventListener('input', scheduleAutoSave);
+
+// On load: try to restore
+const restored = lsLoad();
+if(restored){
+  const when = typeof restored === 'string'
+    ? ' ('+new Date(restored).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+')'
+    : '';
+  // Brief indicator after render
+  setTimeout(()=>{ updateSaveStatus('Restauré'+when); }, 600);
+}
+
 renderBadges(); renderList(); syncFooter();
 </script>
 </body>
