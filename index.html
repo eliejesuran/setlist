@@ -443,19 +443,19 @@ function showSaveFlash(){
   const hhmm = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
   if(lbl) lbl.textContent = 'Sauvé ' + hhmm;
   if(btn){ btn.style.borderColor='#58d68d'; btn.style.color='#58d68d'; }
-  setTimeout(()=>{ if(lbl) lbl.textContent='Sauvegarde auto'; }, 3000);
+  setTimeout(()=>{ if(lbl) lbl.textContent='Sauvegarde auto'; }, 30000);
 }
 
 function updateSaveStatus(msg){
   const lbl = $('localsave-lbl');
-  if(lbl){ lbl.textContent = msg; setTimeout(()=>{ lbl.textContent='Sauvegarde auto'; }, 2500); }
+  if(lbl){ lbl.textContent = msg; setTimeout(()=>{ lbl.textContent='Sauvegarde auto'; }, 25000); }
 }
 
 // Auto-save on every meaningful change (debounced 1.5s)
 let lsTimer = null;
 function scheduleAutoSave(){
   clearTimeout(lsTimer);
-  lsTimer = setTimeout(lsSave, 1500);
+  lsTimer = setTimeout(lsSave, 15000);
 }
 
 // Patch existing renderList to trigger auto-save
