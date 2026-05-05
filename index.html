@@ -80,7 +80,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
 </main>
 <footer>
   <div id="band-title" style="color:var(--gold)">SUPER SEXY BIG BOYS BAND • SETLIST</div>
-  <div><input class="ef" id="footer-venue" value="Sounds, Bruxelles" style="color:var(--gold-light);font-size:10px;letter-spacing:.18em;width:180px" placeholder="Lieu"></div>
+  <div><input class="ef" id="footer-venue" value="" style="color:var(--gold-light);font-size:10px;letter-spacing:.18em;width:180px" placeholder="Lieu"></div>
   <div id="footer-badge2" style="color:var(--gold);font-size:10px;letter-spacing:.18em;">2 juin 2026</div>
 </footer>
 <div class="overlay" id="import-ov"><div class="import-box"><div class="import-title">📋 Import rapide</div><div class="import-sub">Un titre par ligne — colle depuis n'importe où</div><textarea class="import-ta" id="import-ta" placeholder="Superstition&#10;Sir Duke - Stevie Wonder - 3:52&#10;Get Lucky - Daft Punk - 4:08 - Key: Am&#10;---&#10;Harder Better Faster"></textarea><div class="import-hint">Formats acceptés : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note scène</code><br>Ligne vide ou <code>---</code> = séparateur</div><div class="import-btns"><button class="btn-imp" id="btn-do-import" type="button">Importer</button><button class="btn-cancel" id="btn-cancel-import" type="button">Annuler</button></div></div></div>
@@ -188,7 +188,7 @@ function buildPdfHtml(mode){
   items.forEach((item,idx)=>{
     const h=itemHeight(item);
     // Try page break at separator if it would be cleaner
-    const sepBreak = item.type==='sep' && currentH > CONTENT_H*0.4 && currentH > 200;
+    const sepBreak = item.type==='sep' && currentH > CONTENT_H*0.6 && currentH > 200;
     if(currentH+h > CONTENT_H || sepBreak){
       if(currentPage.length) pages.push(currentPage);
       currentPage=[]; currentH=0;
@@ -226,10 +226,10 @@ function buildPdfHtml(mode){
         rows+=`<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 14px;border-bottom:1px solid ${BDIM};${bg}">
           <span style="font-family:'Bebas Neue',sans-serif;font-size:13px;color:${MUTED};min-width:22px;text-align:right;flex-shrink:0;padding-top:5px;">${snum}</span>
           <div style="flex:1;min-width:0;">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.04em;color:${TEXT};line-height:1.0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.title||'\u2014'}</div>
-            ${hc?`<div style="font-family:'Space Mono',monospace;font-size:11px;color:${CMT_CLR};margin-top:2px;line-height:1.3;">${item.comment}</div>`:''}
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:.04em;color:${TEXT};line-height:1.0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.title||'\u2014'}</div>
+            ${hc?`<div style="font-family:'Space Mono',monospace;font-size:14px;color:${CMT_CLR};margin-top:2px;line-height:1.3;">${item.comment}</div>`:''}
           </div>
-          ${includeTiming?`<span style="font-family:'Space Mono',monospace;font-size:11px;color:${SUB};white-space:nowrap;flex-shrink:0;padding-top:6px;">${item.duration}</span>`:''}
+          ${includeTiming?`<span style="font-family:'Space Mono',monospace;font-size:13px;color:${SUB};white-space:nowrap;flex-shrink:0;padding-top:6px;">${item.duration}</span>`:''}
         </div>`;
       }
     });
