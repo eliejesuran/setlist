@@ -203,18 +203,85 @@ Les thèmes modifient les variables CSS (`--black`, `--card`, `--gold`, etc.) vi
 
 ---
 
-## Limitations connues & axes d'amélioration
+## Backlog d'améliorations
 
-### Bug confirmé
-- **Drag & drop mobile** : non fonctionnel. Pistes : bibliothèque `Sortable.js`, ou implémentation manuelle via événements `touchstart`/`touchmove`/`touchend`
+Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / 🟢 mineur.
 
-### Autres pistes identifiées
-- Le thème choisi n'est pas persisté (ni localStorage, ni sauvegarde HTML)
-- L'import ajoute toujours à la fin — pas d'option "remplacer"
-- Le `subtitle-input` est défini en CSS mais jamais inséré dans le HTML
-- La sauvegarde HTML utilise des remplacements regex fragiles sur `outerHTML`
-- Pas de gestion d'annulation (undo/redo)
-- Pas de confirmation avant suppression d'un titre
+---
+
+### 🔴 Bugs
+
+#### B1 — Import : lignes vides parasites en début/fin
+**Problème :** une ligne vide au début ou à la fin du texte collé crée un séparateur non désiré.  
+**Fix proposé :** ignorer les lignes vides si aucun item n'a encore été importé, ou faire un `.trim()` global sur le texte avant de splitter.
+
+#### B2 — `saveHtml()` : regex fragile sur `outerHTML`
+**Problème :** les remplacements regex ciblent `let items=[...]` dans le HTML brut. Si une note scène contient la chaîne `let items=`, la regex peut produire un fichier corrompu.  
+**Fix proposé :** ancrer la regex avec `\blet items=` ou, mieux, injecter l'état via un `<script id="state">` dédié pour un remplacement ciblé et fiable.
+
+#### B3 — `subtitle-input` fantôme
+**Problème :** la classe `.subtitle-input` est définie dans le CSS (styles, taille, couleur) mais l'élément HTML correspondant n'existe pas dans le `<body>`. Résidu d'une ancienne version.  
+**Fix proposé :** soit supprimer la règle CSS, soit réintégrer l'input dans le `<header>` si la fonctionnalité est souhaitée.
+
+#### B4 — Balises `<meta>` hors `<head>`
+**Problème :** les balises `<meta name="author">`, `<meta name="copyright">` etc. sont placées avant la balise `<html>`, donc techniquement hors du document valide. Les navigateurs le tolèrent mais c'est invalide W3C.  
+**Fix proposé :** déplacer ces `<meta>` à l'intérieur du `<head>`.
+
+#### B5 — Bloc vide résidu (ligne 197)
+**Problème :** `if(item.type==='song') {} // sn already incremented` — bloc vide sans effet, résidu d'un refactoring.  
+**Fix proposé :** supprimer la ligne.
+
+---
+
+### 🟠 Robustesse
+
+#### R1 — Thème non persisté
+**Problème :** le thème sélectionné n'est sauvegardé ni dans `lsSave()` ni dans `saveHtml()`. Rechargement de page = retour à `dark-gold`.  
+**Fix proposé :** ajouter `currentTheme` dans l'objet sauvegardé par `lsSave()`, et l'appliquer au restore. Idem dans `saveHtml()` via la variable `currentTheme`.
+
+#### R2 — Auto-save debounce trop long (15 secondes)
+**Problème :** `setTimeout(lsSave, 15000)` — une fermeture accidentelle de l'onglet dans cette fenêtre perd toutes les modifications récentes.  
+**Fix proposé :** réduire à 2–3 secondes. Le localStorage est synchrone et rapide, pas de raison de retarder autant.
+
+#### R3 — Badges PDF indexés en dur
+**Problème :** `buildPdfHtml` utilise `headerBadges[0]` et `headerBadges[1]` pour le lieu et la date. Si l'utilisateur supprime ou réordonne les badges, le PDF affiche de mauvaises informations.  
+**Fix proposé :** utiliser les champs `footer-venue` (lieu) et le dernier badge ou un badge marqué `type:'date'` pour la date, plutôt que des indices.
+
+---
+
+### 🟡 UX
+
+#### U1 — Drag & drop mobile non fonctionnel *(limitation connue principale)*
+**Problème :** l'API HTML5 drag & drop n'est pas supportée sur les interfaces tactiles. La réorganisation des titres est impossible sur mobile.  
+**Solutions envisageables :**
+- **Boutons ↑ ↓** par titre, affichés uniquement sur mobile via media query — solution simple, sans dépendance
+- **`Sortable.js`** (lib légère ~15 Ko) — drag touch natif, intégration facile
+- Implémentation manuelle `touchstart`/`touchmove`/`touchend` — complexe, à éviter
+
+#### U2 — Suppression sans confirmation ni annulation
+**Problème :** le `×` supprime un titre immédiatement et de façon irréversible (pas d'undo).  
+**Fix proposé :** soit un `confirm('Supprimer ce titre ?')` simple, soit un toast "Titre supprimé — [Annuler]" avec un timeout de 4 secondes qui permet de restaurer l'item.
+
+#### U3 — Import : pas d'option "remplacer"
+**Problème :** l'import ajoute toujours à la fin de la liste existante. Si l'utilisateur veut repartir d'un nouveau texte, il doit tout supprimer manuellement.  
+**Fix proposé :** ajouter deux boutons dans l'overlay : "Ajouter à la fin" (comportement actuel) et "Remplacer la setlist".
+
+#### U4 — Bottom sheet mobile : édition limitée au titre seul
+**Problème :** `openSheet()` ne permet d'éditer que le `title`. L'artiste, la durée et la note scène ne sont pas accessibles sur mobile (champs masqués en CSS).  
+**Fix proposé :** enrichir le bottom sheet avec les champs artiste, durée et commentaire.
+
+---
+
+### 🟢 Mineur / cosmétique
+
+#### M1 — Thème non sauvegardé dans l'export HTML
+Même remarque que R1, mais côté `saveHtml()`. Le fichier téléchargé repart toujours en `dark-gold` même si l'utilisateur avait choisi un autre thème.
+
+#### M2 — Nom de fichier PDF basé sur les 3 premiers badges
+Le slug du fichier PDF (`ssbbb_{b1}_{b2}_{b3}_{mode}.pdf`) dépend des badges présents. Si les badges sont vides ou mal nommés, le fichier a un nom peu lisible. Pourrait inclure le nom du groupe et la date systématiquement.
+
+#### M3 — `footer-badge2` non mis à jour par `renderBadges()`
+`syncFooter()` lit `headerBadges[1]` pour remplir `#footer-badge2`, mais si l'utilisateur modifie la valeur directement dans le badge (input), le footer se met à jour via `oninput`. En revanche, si le badge est supprimé, `#footer-badge2` garde l'ancienne valeur jusqu'au prochain `syncFooter()`. Comportement acceptable mais légèrement incohérent.
 
 ---
 
