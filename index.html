@@ -52,7 +52,9 @@ main{padding:32px 40px;max-width:900px;margin:0 auto}
 .sheet-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:400;align-items:flex-end;justify-content:center}.sheet-ov.open{display:flex}.sheet{background:#1c1c1c;border:1px solid var(--border);border-bottom:none;border-radius:16px 16px 0 0;padding:20px 20px 40px;width:100%;max-width:600px}.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px}.sheet-ttl{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.1em;color:var(--gold);margin-bottom:4px}.sh-lbl{font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}.sh-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:12px;padding:10px 14px;outline:none;border-radius:4px}.sheet-close{width:100%;padding:13px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--grey);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:4px;margin-top:16px}
 .pdf-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px}.pdf-ov.active{display:flex}.pdf-txt{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.2em;color:var(--gold)}.spinner{width:40px;height:40px;border:3px solid var(--gold-dim);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}#pdf-tgt{position:fixed;left:-9999px;top:0;width:794px;pointer-events:none}
 footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);letter-spacing:.18em;flex-wrap:wrap;gap:10px;margin-top:20px}
-@media(max-width:640px){header,main,footer{padding-left:16px;padding-right:16px}.toolbar{padding:10px 16px;gap:6px}.tbtn .lbl{display:none}.tbtn{padding:9px 12px}.inp-artist,.inp-comment{display:none}}
+.mob-arrows{display:none;flex-direction:column;gap:2px;align-items:center;justify-content:center;padding:0 4px}
+.btn-mv{background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;line-height:1;cursor:pointer;padding:0;border-radius:2px;width:26px;height:22px;display:flex;align-items:center;justify-content:center}.btn-mv:active{border-color:var(--gold);color:var(--gold)}.btn-mv:disabled{opacity:.2;cursor:default}
+@media(max-width:640px){header,main,footer{padding-left:16px;padding-right:16px}.toolbar{padding:10px 16px;gap:6px}.tbtn .lbl{display:none}.tbtn{padding:9px 12px}.inp-artist,.inp-comment{display:none}.mob-arrows{display:flex}.c-num{cursor:default;font-size:14px}}
 </style>
 </head>
 <body>
@@ -83,8 +85,8 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   <div><input class="ef" id="footer-venue" value="" style="color:var(--gold-light);font-size:10px;letter-spacing:.18em;width:180px" placeholder="Lieu"></div>
   <div id="footer-badge2" style="color:var(--gold);font-size:10px;letter-spacing:.18em;">2 juin 2026</div>
 </footer>
-<div class="overlay" id="import-ov"><div class="import-box"><div class="import-title">📋 Import rapide</div><div class="import-sub">Un titre par ligne — colle depuis n'importe où</div><textarea class="import-ta" id="import-ta" placeholder="Superstition&#10;Sir Duke - Stevie Wonder - 3:52&#10;Get Lucky - Daft Punk - 4:08 - Key: Am&#10;---&#10;Harder Better Faster"></textarea><div class="import-hint">Formats acceptés : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note scène</code><br>Ligne vide ou <code>---</code> = séparateur</div><div class="import-btns"><button class="btn-imp" id="btn-do-import" type="button">Importer</button><button class="btn-cancel" id="btn-cancel-import" type="button">Annuler</button></div></div></div>
-<div class="overlay" id="export-ov"><div class="import-box"><div class="import-title">⎘ Export texte</div><div class="import-sub">Format inverse de l'import — copié dans le presse-papiers</div><textarea class="import-ta" id="export-ta" readonly placeholder="L'export apparaîtra ici…"></textarea><div class="import-hint">Format exporté : <code>Titre - Artiste - 3:45 - Note scène</code><br>Les séparateurs sont exportés en <code>---</code>.</div><div class="import-btns"><button class="btn-imp" id="btn-copy-export" type="button">Copier</button><button class="btn-cancel" id="btn-cancel-export" type="button">Fermer</button></div></div></div>
+<div class="overlay" id="import-ov"><div class="import-box"><div class="import-title">📋 Import rapide</div><div class="import-sub">Un titre par ligne — colle depuis n'importe où</div><textarea class="import-ta" id="import-ta" placeholder="Superstition&#10;Sir Duke - Stevie Wonder - 3:52&#10;Get Lucky - Daft Punk - 4:08 - Key: Am&#10;---&#10;Harder Better Faster"></textarea><div class="import-hint">Formats acceptés : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note scène</code><br>Ligne vide ou <code>---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-do-import-add" type="button">➕ Ajouter à la fin</button><button class="btn-imp" id="btn-do-import-replace" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Remplacer</button><button class="btn-cancel" id="btn-cancel-import" type="button">Annuler</button></div></div></div>
+<div class="overlay" id="export-ov"><div class="import-box"><div class="import-title">⎘ Export texte</div><div class="import-sub">Format inverse de l'import — copié dans le presse-papiers</div><textarea class="import-ta" id="export-ta" readonly placeholder="L'export apparaîtra ici…"></textarea><div class="import-hint">Format exporté : <code>##BADGES: Lieu | Date</code> puis <code>Titre - Artiste - 3:45 - Note scène</code><br>Les séparateurs sont exportés en <code>---</code>. Ce format peut être réimporté.</div><div class="import-btns"><button class="btn-imp" id="btn-copy-export" type="button">Copier</button><button class="btn-cancel" id="btn-cancel-export" type="button">Fermer</button></div></div></div>
 <div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-ttl" id="sh-name">—</div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><button class="sheet-close" id="sh-close" type="button">Fermer</button></div></div>
 <div class="pdf-ov" id="pdf-ov"><div class="spinner"></div><div class="pdf-txt">Génération du PDF…</div></div><div id="pdf-tgt"></div>
 <script>
@@ -115,13 +117,31 @@ function subBefore(idx){let sum=0; for(let i=idx-1;i>=0;i--){if(items[i].type===
 function refreshSubs(){items.forEach((item,idx)=>{if(item.type!=='sep')return; const el=document.querySelector(`[data-sub="${item.id}"]`); if(el)el.textContent=fmtDur(subBefore(idx))})}
 function renderBadges(){const row=$('badge-row'); row.innerHTML=''; headerBadges.forEach(b=>{const d=document.createElement('div'); d.className='hbadge'; const inp=document.createElement('input'); inp.className='badge-ef'; inp.value=b.label; inp.style.minWidth=Math.max(50,b.label.length*8)+'px'; inp.oninput=()=>{b.label=inp.value; inp.style.minWidth=Math.max(50,inp.value.length*8)+'px'; syncFooter();}; d.appendChild(inp); const del=document.createElement('button'); del.className='badge-del'; del.type='button'; del.innerHTML='×'; del.onclick=()=>{headerBadges=headerBadges.filter(x=>x.id!==b.id); renderBadges()}; d.appendChild(del); row.appendChild(d)}); const add=document.createElement('button'); add.type='button'; add.className='btn-add-badge'; add.textContent='+ badge'; add.onclick=()=>{headerBadges.push({id:'hb'+nextBadgeId++,label:'Nouveau'}); renderBadges(); const ins=row.querySelectorAll('.badge-ef'); if(ins.length){ins[ins.length-1].focus();ins[ins.length-1].select()}}; row.appendChild(add); syncFooter();}
 function renderList(){const body=$('list-body'); body.innerHTML=''; let num=0; items.forEach((item,idx)=>{if(item.type==='sep') body.appendChild(makeSep(item,idx)); else {num++; body.appendChild(makeSong(item,num));}}); updateTotals()}
-function makeSong(song,num){const row=document.createElement('div'); row.className='row-song'; row.dataset.id=song.id; row.draggable=true; const cn=document.createElement('div'); cn.className='c-num'; cn.textContent=num; row.appendChild(cn); const cm=document.createElement('div'); cm.className='c-main'; const ti=document.createElement('input'); ti.type='text'; ti.className='inp-title'; ti.value=song.title; ti.placeholder='Titre…'; ti.oninput=()=>song.title=ti.value; ti.onclick=e=>{if(mob()){e.preventDefault(); openSheet(song)}}; cm.appendChild(ti); const ar=document.createElement('input'); ar.type='text'; ar.className='inp-artist'; ar.value=song.artist; ar.placeholder='Artiste…'; ar.oninput=()=>song.artist=ar.value; cm.appendChild(ar); const co=document.createElement('input'); co.type='text'; co.className='inp-comment'; co.value=song.comment; co.placeholder='Note scène…'; co.oninput=()=>song.comment=co.value; cm.appendChild(co); row.appendChild(cm); const cd=document.createElement('div'); cd.className='c-dur'; const di=document.createElement('input'); di.type='text'; di.className='inp-dur'; di.value=song.duration; di.placeholder='0:00'; di.oninput=()=>{song.duration=di.value; updateTotals(); refreshSubs()}; di.onblur=()=>{const s=parseDur(di.value); di.value=fmtDur(s); song.duration=di.value; updateTotals(); refreshSubs()}; cd.appendChild(di); row.appendChild(cd); const cdel=document.createElement('div'); cdel.className='c-del'; const db=document.createElement('button'); db.type='button'; db.className='btn-del'; db.innerHTML='×'; db.onclick=()=>{items=items.filter(i=>i.id!==song.id); renderList()}; cdel.appendChild(db); row.appendChild(cdel); row.addEventListener('dragstart',e=>{dragSrcId=song.id; e.dataTransfer.effectAllowed='move'; row.style.opacity='.35'}); row.addEventListener('dragend',()=>{row.style.opacity=''; dragSrcId=null}); row.addEventListener('dragover',e=>{e.preventDefault(); row.classList.add('drag-over')}); row.addEventListener('dragleave',()=>row.classList.remove('drag-over')); row.addEventListener('drop',e=>{e.preventDefault(); row.classList.remove('drag-over'); if(!dragSrcId||dragSrcId===song.id)return; const fi=items.findIndex(i=>i.id===dragSrcId); const ti2=items.findIndex(i=>i.id===song.id); const [m]=items.splice(fi,1); items.splice(ti2,0,m); renderList()}); return row}
+function makeSong(song,num){const row=document.createElement('div'); row.className='row-song'; row.dataset.id=song.id; row.draggable=true; const cn=document.createElement('div'); cn.className='c-num'; cn.textContent=num; row.appendChild(cn); const cm=document.createElement('div'); cm.className='c-main'; const ti=document.createElement('input'); ti.type='text'; ti.className='inp-title'; ti.value=song.title; ti.placeholder='Titre…'; ti.oninput=()=>song.title=ti.value; ti.onclick=e=>{if(mob()){e.preventDefault(); openSheet(song)}}; cm.appendChild(ti); const ar=document.createElement('input'); ar.type='text'; ar.className='inp-artist'; ar.value=song.artist; ar.placeholder='Artiste…'; ar.oninput=()=>song.artist=ar.value; cm.appendChild(ar); const co=document.createElement('input'); co.type='text'; co.className='inp-comment'; co.value=song.comment; co.placeholder='Note scène…'; co.oninput=()=>song.comment=co.value; cm.appendChild(co); row.appendChild(cm); const cd=document.createElement('div'); cd.className='c-dur'; const di=document.createElement('input'); di.type='text'; di.className='inp-dur'; di.value=song.duration; di.placeholder='0:00'; di.oninput=()=>{song.duration=di.value; updateTotals(); refreshSubs()}; di.onblur=()=>{const s=parseDur(di.value); di.value=fmtDur(s); song.duration=di.value; updateTotals(); refreshSubs()}; cd.appendChild(di); row.appendChild(cd); const cdel=document.createElement('div'); cdel.className='c-del'; const db=document.createElement('button'); db.type='button'; db.className='btn-del'; db.innerHTML='×'; db.onclick=()=>{items=items.filter(i=>i.id!==song.id); renderList()}; cdel.appendChild(db); row.appendChild(cdel); // Mobile move buttons ↑ ↓
+ const cma=document.createElement('div'); cma.className='mob-arrows';
+ const bup=document.createElement('button'); bup.type='button'; bup.className='btn-mv'; bup.innerHTML='▲'; bup.title='Monter';
+ const bdn=document.createElement('button'); bdn.type='button'; bdn.className='btn-mv'; bdn.innerHTML='▼'; bdn.title='Descendre';
+ bup.onclick=()=>{const fi=items.findIndex(i=>i.id===song.id); if(fi<=0)return; const[m]=items.splice(fi,1); items.splice(fi-1,0,m); renderList()};
+ bdn.onclick=()=>{const fi=items.findIndex(i=>i.id===song.id); if(fi>=items.length-1)return; const[m]=items.splice(fi,1); items.splice(fi+1,0,m); renderList()};
+ cma.appendChild(bup); cma.appendChild(bdn); row.appendChild(cma);
+ row.addEventListener('dragstart',e=>{dragSrcId=song.id; e.dataTransfer.effectAllowed='move'; row.style.opacity='.35'}); row.addEventListener('dragend',()=>{row.style.opacity=''; dragSrcId=null}); row.addEventListener('dragover',e=>{e.preventDefault(); row.classList.add('drag-over')}); row.addEventListener('dragleave',()=>row.classList.remove('drag-over')); row.addEventListener('drop',e=>{e.preventDefault(); row.classList.remove('drag-over'); if(!dragSrcId||dragSrcId===song.id)return; const fi=items.findIndex(i=>i.id===dragSrcId); const ti2=items.findIndex(i=>i.id===song.id); const [m]=items.splice(fi,1); items.splice(ti2,0,m); renderList()}); return row}
 function makeSep(sep,idx){const row=document.createElement('div'); row.className='row-sep'; const ll=document.createElement('div'); ll.className='sep-line-l'; row.appendChild(ll); const badge=document.createElement('div'); badge.className='sep-badge'; const li=document.createElement('input'); li.className='inp-sep'; li.value=sep.label; li.placeholder='Séparateur…'; li.style.width=Math.max(60,sep.label.length*9)+'px'; li.oninput=()=>{sep.label=li.value; li.style.width=Math.max(60,li.value.length*9)+'px'}; badge.appendChild(li); const sub=document.createElement('span'); sub.className='sep-sub'; sub.dataset.sub=sep.id; sub.textContent=fmtDur(subBefore(idx)); badge.appendChild(sub); const db=document.createElement('button'); db.type='button'; db.className='btn-del-sep'; db.innerHTML='×'; db.onclick=()=>{items=items.filter(i=>i.id!==sep.id); renderList()}; badge.appendChild(db); row.appendChild(badge); const lr=document.createElement('div'); lr.className='sep-line-r'; row.appendChild(lr); return row}
 function addSong(d={}){items.push({type:'song',id:'s'+nextId++,title:d.title||'',artist:d.artist||'',duration:d.duration||'0:00',comment:d.comment||''}); renderList()}
 function addSep(lbl=''){items.push({type:'sep',id:'sep'+nextId++,label:lbl||'— Pause —'}); renderList()}
 function openSheet(song){$('sh-name').textContent=song.title||'Nouveau titre'; $('sh-title').value=song.title; $('sh-title').oninput=()=>{song.title=$('sh-title').value; $('sh-name').textContent=song.title||'—';}; $('sheet-ov').classList.add('open')}
 function closeSheet(){$('sheet-ov').classList.remove('open'); renderList();}
-function exportImportFormat(){return items.map(item=>{if(item.type==='sep') return '---'; const parts=[item.title||'']; if(item.artist) parts.push(item.artist); if(item.duration) parts.push(item.duration); if(item.comment) parts.push(item.comment); return parts.join(' - ')}).join('\n')}
+function exportImportFormat(){
+  const badgesLine = '##BADGES: '+headerBadges.map(b=>b.label).join(' | ');
+  const songs = items.map(item=>{
+    if(item.type==='sep') return '---';
+    const parts=[item.title||''];
+    if(item.artist)  parts.push(item.artist);
+    if(item.duration) parts.push(item.duration);
+    if(item.comment) parts.push(item.comment);
+    return parts.join(' - ');
+  }).join('\n');
+  return badgesLine+'\n'+songs;
+}
 async function copyExportText(){const text=exportImportFormat(); $('export-ta').value=text; try{await navigator.clipboard.writeText(text); alert('Texte copié dans le presse-papiers.')}catch(e){$('export-ta').focus(); $('export-ta').select(); alert('Copie automatique impossible ici. Le texte est sélectionné, tu peux faire Ctrl/Cmd+C.')}}
 function buildPdfHtml(mode){
   const isLight=mode==='light';
@@ -284,53 +304,65 @@ $('sheet-ov').addEventListener('click',e=>{if(e.target===$('sheet-ov'))closeShee
 $('btn-import').addEventListener('click',()=>{$('import-ta').value=''; $('import-ov').classList.add('open'); $('import-ta').focus()});
 $('btn-cancel-import').addEventListener('click',()=>$('import-ov').classList.remove('open'));
 $('import-ov').addEventListener('click',e=>{if(e.target===$('import-ov'))$('import-ov').classList.remove('open')});
-$('btn-do-import').addEventListener('click',()=>{
-  const lines = $('import-ta').value.split('\n');
+function parseImport(text){
+  const lines = text.split('\n');
   const imported = [];
+  let badgesParsed = null;
+  let hasItem = false; // fix B1 : ne crée pas de séparateur avant le 1er item
 
   lines.forEach(line=>{
     const raw = line.trim();
 
-    if(!raw || raw==='---'){
-      imported.push({
-        type:'sep',
-        id:'sep'+nextId++,
-        label:'— Pause —'
-      });
+    // Ligne badges ##BADGES: Bruxelles | 2 juin 2026
+    if(raw.startsWith('##BADGES:')){
+      badgesParsed = raw.slice(9).split('|').map(s=>s.trim()).filter(Boolean);
       return;
     }
 
-    // ✅ on récupère le DERNIER timing trouvé
+    if(!raw || raw==='---'){
+      if(hasItem){  // fix B1 : ignorer les vides avant le 1er item
+        imported.push({type:'sep', id:'sep'+nextId++, label:'— Pause —'});
+      }
+      return;
+    }
+
     const durMatch = raw.match(/(\d+:\d{2})(?!.*\d+:\d{2})/);
     const duration = durMatch ? durMatch[1] : '0:00';
-
-    // on enlève le timing du texte
     const withoutDur = durMatch
       ? raw.replace(durMatch[1],'').replace(/\s*-\s*$/,'').trim()
       : raw;
-
-    const parts = withoutDur
-      .split(/\s*-\s*/)
-      .map(s=>s.trim())
-      .filter(Boolean);
-
-    const title = parts[0] || '';
-    const artist = parts[1] || '';
-    const comment = parts.slice(2).join(' - ');
+    const parts = withoutDur.split(/\s*-\s*/).map(s=>s.trim()).filter(Boolean);
 
     imported.push({
-      type:'song',
-      id:'s'+nextId++,
-      title,
-      artist,
-      duration,
-      comment
+      type:'song', id:'s'+nextId++,
+      title: parts[0]||'', artist: parts[1]||'',
+      duration, comment: parts.slice(2).join(' - ')
     });
+    hasItem = true;
   });
 
-  items = items.concat(imported);
+  // Supprimer un éventuel séparateur final parasite
+  while(imported.length && imported[imported.length-1].type==='sep') imported.pop();
+
+  return {imported, badgesParsed};
+}
+
+function doImport(mode){
+  const {imported, badgesParsed} = parseImport($('import-ta').value);
+  if(badgesParsed){
+    headerBadges = badgesParsed.map((label,i)=>({id:'hb'+(nextBadgeId++), label}));
+    renderBadges();
+  }
+  if(mode==='replace') items = imported;
+  else items = items.concat(imported);
   renderList();
   $('import-ov').classList.remove('open');
+}
+
+$('btn-do-import-add').addEventListener('click',()=>doImport('add'));
+$('btn-do-import-replace').addEventListener('click',()=>{
+  if(items.length && !confirm('Remplacer toute la setlist par l\'import ?')) return;
+  doImport('replace');
 });
 $('btn-export').addEventListener('click',()=>{
   $('export-ta').value = exportImportFormat();
