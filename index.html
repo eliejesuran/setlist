@@ -291,7 +291,8 @@ function generatePDF(){return async()=>{
   const ov=$('pdf-ov'); ov.classList.add('active');
   try{
     const {bg,html}=buildPdfHtml(mode);
-    const AW=794, AW_MM=210, AH_MM=297, SCALE=1.5; // R4: réduit de 2 à 1.5
+    const AW=794, AW_MM=210, AH_MM=297;
+    const SCALE= mode==='dark' ? 1.5 :2; // R4: réduit de 2 à 1.5 puis 1.8
     const tgt=$('pdf-tgt');
     tgt.style.width=AW+'px';
     tgt.innerHTML=html;
@@ -304,7 +305,7 @@ function generatePDF(){return async()=>{
     for(let i=0;i<pages.length;i++){
       const canvas=await html2canvas(pages[i],{scale:SCALE,backgroundColor:bg,useCORS:true,logging:false,width:AW,windowWidth:AW});
       const imgFmt = mode==='dark' ? 'PNG' : 'JPEG'; // R4: JPEG pour light, PNG pour dark
-      const img = mode==='dark' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg',0.9);
+      const img = mode==='dark' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg',1);
       const iW=canvas.width/SCALE, iH=canvas.height/SCALE;
       const mmPx=AW_MM/iW, cHmm=iH*mmPx;
       if(i>0) doc.addPage();
