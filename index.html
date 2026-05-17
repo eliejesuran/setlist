@@ -72,6 +72,8 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   <button class="tbtn" id="btn-theme-toggle" type="button" title="Basculer Dark / Sépia / Light"><span id="theme-icon">☀</span><span class="lbl" id="theme-lbl">Sépia</span></button>
   <button class="tbtn" id="btn-localsave" type="button" style="border-color:rgba(39,174,96,.4);color:#58d68d;background:rgba(39,174,96,.05);" title="Sauvegarde dans le navigateur — persiste sans télécharger"><span>&#128204;</span><span class="lbl" id="localsave-lbl">Sauvegarde auto</span></button>
   <button class="tbtn imp" id="btn-texte" type="button"><span>📋</span><span class="lbl">Texte</span></button>
+  <button class="tbtn" id="btn-share" type="button" style="border-color:rgba(155,89,182,.5);color:#9b59b6;background:rgba(155,89,182,.06);"><span>🔗</span><span class="lbl">Partager</span></button>
+  <span id="ws-indicator" title="Non connecté" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;margin-left:2px;transition:background .4s;"></span>
 </div>
 <main>
   <div class="total-bar"><div><div class="t-lbl">Durée totale</div><div class="t-val" id="total-time">0:00</div></div><div class="t-sub" id="total-count">0 titre</div></div>
@@ -83,6 +85,27 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   <div><input class="ef" id="footer-venue" value="" style="color:var(--gold-light);font-size:10px;letter-spacing:.18em;width:180px" placeholder="Lieu"></div>
   <div id="footer-badge2" style="color:var(--gold);font-size:10px;letter-spacing:.18em;">2 juin 2026</div>
 </footer>
+<div class="overlay" id="share-ov"><div class="import-box" style="max-width:480px;">
+  <div class="import-title" style="color:#9b59b6;">🔗 Partager la session</div>
+  <div class="import-sub" id="share-status-line">Génère un lien permanent pour ton groupe</div>
+  <div style="margin:16px 0 8px;">
+    <div class="sh-lbl">Lien de la session</div>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <input id="share-url-input" readonly style="flex:1;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;padding:10px 12px;border-radius:4px;outline:none;min-width:0;" placeholder="Clique sur Créer pour générer un lien…">
+      <button id="btn-copy-share" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;" disabled>⎘</button>
+    </div>
+  </div>
+  <div id="share-peers" style="font-size:10px;color:var(--muted);letter-spacing:.15em;min-height:18px;margin-bottom:4px;"></div>
+  <div class="import-btns" style="margin-top:14px;">
+    <button id="btn-share-create" class="btn-imp" type="button">✦ Créer / Rejoindre</button>
+    <button id="btn-share-disconnect" class="btn-imp" type="button" style="background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.4);color:#e74c3c;display:none;">✕ Déconnecter</button>
+    <button class="btn-cancel" id="btn-cancel-share" type="button">Fermer</button>
+  </div>
+  <div style="font-size:10px;color:var(--muted);margin-top:14px;line-height:1.8;">
+    Partage le lien à tes musiciens — ils verront la setlist à jour en temps réel.<br>
+    Tout le monde peut modifier. L'app fonctionne aussi hors ligne sans session.
+  </div>
+</div></div>
 <div class="overlay" id="texte-ov"><div class="import-box"><div class="import-title">📋 Texte</div><div class="import-sub">Export de la setlist — modifie et applique pour importer</div><textarea class="import-ta" id="texte-ta" placeholder="La setlist apparaîtra ici…"></textarea><div class="import-hint">Formats : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note</code><br>Ligne vide ou <code>---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-copy-texte" type="button">⎘ Copier</button><button class="btn-imp" id="btn-apply-texte" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Appliquer</button><button class="btn-cancel" id="btn-cancel-texte" type="button">Fermer</button></div></div></div>
 <div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-ttl" id="sh-name">—</div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><button class="sheet-close" id="sh-close" type="button">Fermer</button></div></div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo" type="button">Annuler</button></div>
@@ -525,6 +548,210 @@ if(restored){
   // Brief indicator after render
   setTimeout(()=>{ updateSaveStatus('Restauré'+when); }, 600);
 }
+
+
+/* ══ COLLABORATION WEBSOCKET (U8) ══ */
+const WS_SERVER = 'wss://ssbbb-server.fly.dev';
+let ws = null;
+let wsSessionId = null;
+let wsSuppressPatch = false; // évite la boucle : patch reçu → renderList → patch émis
+
+function wsIndicator(state){
+  // state : 'off' | 'connecting' | 'on'
+  const el = $('ws-indicator');
+  if(!el) return;
+  el.style.background = state==='on' ? '#58d68d' : state==='connecting' ? '#f39c12' : 'var(--muted)';
+  el.title = state==='on' ? 'Connecté à la session' : state==='connecting' ? 'Connexion…' : 'Non connecté';
+}
+
+function wsGetState(){
+  return {
+    items,
+    headerBadges,
+    bandName:    $('band-name').value,
+    footerVenue: $('footer-venue').value,
+  };
+}
+
+function wsApplyState(state){
+  if(!state) return;
+  wsSuppressPatch = true;
+  if(state.items)        items        = state.items;
+  if(state.headerBadges) headerBadges = state.headerBadges;
+  if(state.bandName)     $('band-name').value    = state.bandName;
+  if(state.footerVenue)  $('footer-venue').value = state.footerVenue;
+  renderBadges();
+  renderList();
+  syncFooter();
+  wsSuppressPatch = false;
+}
+
+function wsPatch(){
+  if(wsSuppressPatch) return;
+  if(!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type:'patch', state: wsGetState() }));
+}
+
+function wsUpdateShareUI(){
+  const connected = ws && ws.readyState === WebSocket.OPEN;
+  const createBtn = $('btn-share-create');
+  const discBtn   = $('btn-share-disconnect');
+  const statusLine = $('share-status-line');
+  if(createBtn) createBtn.style.display = connected ? 'none' : '';
+  if(discBtn)   discBtn.style.display   = connected ? '' : 'none';
+  if(statusLine) statusLine.textContent = connected
+    ? `Session active : ${wsSessionId}`
+    : 'Génère un lien permanent pour ton groupe';
+}
+
+function wsConnect(sessionId){
+  if(ws){ ws.close(); ws = null; }
+  wsSessionId = sessionId;
+  wsIndicator('connecting');
+
+  ws = new WebSocket(`${WS_SERVER}/session/${sessionId}`);
+
+  ws.onopen = () => {
+    wsIndicator('on');
+    wsUpdateShareUI();
+    // Mettre à jour l'URL du navigateur sans recharger
+    const url = new URL(window.location.href);
+    url.searchParams.set('s', sessionId);
+    window.history.replaceState({}, '', url.toString());
+    // Renseigner le champ de partage
+    const shareInput = $('share-url-input');
+    if(shareInput){ shareInput.value = url.toString(); }
+    const copyBtn = $('btn-copy-share');
+    if(copyBtn) copyBtn.disabled = false;
+  };
+
+  ws.onmessage = (evt) => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+
+    if(msg.type === 'init' || msg.type === 'patch'){
+      wsApplyState(msg.state);
+    }
+    if(msg.type === 'peer_joined' || msg.type === 'peer_left' || msg.type === 'init' || msg.type === 'joined'){
+      const peersEl = $('share-peers');
+      if(peersEl && msg.peers != null){
+        peersEl.textContent = msg.peers > 1
+          ? `${msg.peers} membres connectés`
+          : '1 membre connecté (toi)';
+      }
+    }
+    if(msg.type === 'session_expired'){
+      wsDisconnect();
+      showToast('Session expirée — reconnecte-toi', ()=>{});
+    }
+  };
+
+  ws.onclose = () => {
+    wsIndicator('off');
+    wsUpdateShareUI();
+    // Tentative de reconnexion automatique après 5s si on avait une session
+    if(wsSessionId){
+      setTimeout(()=>{
+        if(!ws || ws.readyState === WebSocket.CLOSED) wsConnect(wsSessionId);
+      }, 5000);
+    }
+  };
+
+  ws.onerror = () => {
+    wsIndicator('off');
+  };
+}
+
+function wsDisconnect(){
+  wsSessionId = null;
+  if(ws){ ws.close(); ws = null; }
+  wsIndicator('off');
+  wsUpdateShareUI();
+  // Retirer ?s= de l'URL
+  const url = new URL(window.location.href);
+  url.searchParams.delete('s');
+  window.history.replaceState({}, '', url.toString());
+  const shareInput = $('share-url-input');
+  if(shareInput) shareInput.value = '';
+  const copyBtn = $('btn-copy-share');
+  if(copyBtn) copyBtn.disabled = true;
+  const peersEl = $('share-peers');
+  if(peersEl) peersEl.textContent = '';
+}
+
+function wsRandomId(){
+  const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+  let id = '';
+  for(let i=0;i<8;i++) id += chars[Math.floor(Math.random()*chars.length)];
+  return id;
+}
+
+// Bouton Partager
+$('btn-share').addEventListener('click', ()=>{
+  wsUpdateShareUI();
+  // Pré-remplir l'input si session déjà active
+  if(wsSessionId){
+    const url = new URL(window.location.href);
+    url.searchParams.set('s', wsSessionId);
+    const shareInput = $('share-url-input');
+    if(shareInput) shareInput.value = url.toString();
+    const copyBtn = $('btn-copy-share');
+    if(copyBtn) copyBtn.disabled = false;
+  }
+  $('share-ov').classList.add('open');
+});
+
+$('btn-cancel-share').addEventListener('click', ()=> $('share-ov').classList.remove('open'));
+$('share-ov').addEventListener('click', e=>{ if(e.target===$('share-ov')) $('share-ov').classList.remove('open'); });
+
+$('btn-share-create').addEventListener('click', ()=>{
+  // Si l'input contient déjà un ?s=, on l'utilise ; sinon on génère
+  const shareInput = $('share-url-input');
+  let sessionId = wsSessionId;
+  if(!sessionId){
+    // Vérifier si l'utilisateur a collé une URL avec ?s=
+    try {
+      const typed = new URL(shareInput?.value || '');
+      const sid = typed.searchParams.get('s');
+      if(sid && /^[a-z0-9]{4,16}$/.test(sid)) sessionId = sid;
+    } catch {}
+  }
+  if(!sessionId) sessionId = wsRandomId();
+  wsConnect(sessionId);
+});
+
+$('btn-share-disconnect').addEventListener('click', ()=> wsDisconnect());
+
+$('btn-copy-share').addEventListener('click', async ()=>{
+  const val = $('share-url-input')?.value;
+  if(!val) return;
+  try {
+    await navigator.clipboard.writeText(val);
+    showToast('Lien copié !', ()=>{});
+  } catch {
+    $('share-url-input').select();
+    showToast('Sélectionne le lien et fais Ctrl+C', ()=>{});
+  }
+});
+
+// Rejoindre automatiquement si ?s= dans l'URL au chargement
+(()=>{
+  const urlParams = new URLSearchParams(window.location.search);
+  const sid = urlParams.get('s');
+  if(sid && /^[a-z0-9]{4,16}$/.test(sid)){
+    // Petit délai pour laisser le localStorage se restaurer d'abord
+    setTimeout(()=> wsConnect(sid), 800);
+  }
+})();
+
+// Patch WS à chaque modification — on surcharge renderList une 2e fois
+const _origRenderListWS = renderList;
+renderList = function(...args){
+  _origRenderListWS(...args);
+  wsPatch();
+};
+$('band-name').addEventListener('input', wsPatch);
+$('footer-venue').addEventListener('input', wsPatch);
 
 renderBadges(); renderList(); syncFooter();
 </script>
