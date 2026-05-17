@@ -1,0 +1,18 @@
+{
+  "name": "ssbbb-server",
+  "version": "1.0.0",
+  "description": "Serveur de sessions collaboratives pour SSBBB Setlist",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "license": "GPL-3.0"
+}
