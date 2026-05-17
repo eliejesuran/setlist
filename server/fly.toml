@@ -1,0 +1,20 @@
+# fly.toml — Configuration Fly.io pour SSBBB server
+# Documentation : https://fly.io/docs/reference/configuration/
+
+app = "ssbbb-server"        # tu peux changer ce nom, il doit être unique sur Fly.io
+primary_region = "cdg"      # Paris 🇫🇷 — change en "ams" pour Amsterdam
+
+[build]
+  # Fly.io détecte automatiquement Node.js via package.json
+
+[http_service]
+  internal_port = 3001      # doit correspondre au PORT dans server.js
+  force_https = true        # redirige HTTP → HTTPS automatiquement
+  auto_stop_machines = false  # NE PAS mettre en veille (important pour WebSocket)
+  auto_start_machines = true
+  min_machines_running = 1  # toujours au moins 1 instance active
+
+[[vm]]
+  memory = "256mb"          # largement suffisant
+  cpu_kind = "shared"
+  cpus = 1
