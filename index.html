@@ -1,13 +1,13 @@
 <!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
 <meta name="author" content="Elie JESURAN">
 <meta name="copyright" content="© 2026 Elie JESURAN">
 <meta name="date" content="2026-04-10">
 <meta name="licence" content="GPL">
-<html lang="fr">
-<head>
-<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>SSBBB — Setlist</title>
+<title>Setlist</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -20,7 +20,6 @@ header{position:relative;padding:40px 40px 32px;border-bottom:1px solid var(--bo
 header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
 .ef{background:transparent;border:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;outline:none;cursor:text;width:100%;border-bottom:1px dashed transparent;transition:border-color .2s}.ef:focus{border-bottom-color:var(--gold-dim)}
 .band-name-input{font-family:'Bebas Neue',sans-serif;font-size:clamp(38px,8vw,100px);letter-spacing:.08em;line-height:.9;color:var(--white);display:block}
-.subtitle-input{font-size:11px;letter-spacing:.4em;text-transform:uppercase;color:var(--gold-light);margin-top:14px;display:block}
 .badge-row{display:flex;gap:8px;margin-top:24px;flex-wrap:wrap;align-items:center}
 .hbadge{border:1px solid var(--gold-dim);padding:5px 12px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);background:rgba(200,168,75,.05);display:inline-flex;align-items:center;gap:6px}
 .badge-ef{background:transparent;border:none;color:var(--gold);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;outline:none;min-width:40px}
@@ -40,6 +39,7 @@ main{padding:32px 40px;max-width:900px;margin:0 auto}
 .inp-title{border:none;color:var(--white);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;width:100%}
 .inp-artist,.inp-comment{border:none;color:var(--grey);font-family:'Space Mono',monospace;font-size:11px;font-style:italic;width:100%;margin-top:3px}
 .inp-dur{border:1px solid var(--border);color:var(--gold-light);font-family:'Space Mono',monospace;font-size:12px;text-align:center;width:60px;padding:4px 5px;border-radius:2px}
+.song-link-icon{font-size:11px;cursor:pointer;opacity:.5;text-decoration:none;flex-shrink:0;padding:0 3px;line-height:1;align-self:center;}.song-link-icon:hover{opacity:1}
 .btn-del,.btn-del-sep{background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;padding:2px 5px;line-height:1}.btn-del:hover,.btn-del-sep:hover{color:#e74c3c}
 .row-sep{display:flex;align-items:center;padding:0;margin:8px 0}.sep-line-l{flex:1;height:1px;background:linear-gradient(90deg,var(--gold-dim),rgba(200,168,75,.1))}.sep-badge{display:inline-flex;align-items:center;gap:8px;margin:0 10px;border:1px solid var(--gold-dim);padding:5px 12px;background:rgba(200,168,75,.06);white-space:nowrap}.inp-sep{border:none;color:var(--gold);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;min-width:60px}.sep-sub{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--gold-light)}.sep-line-r{width:20px;height:1px;background:rgba(200,168,75,.1)}
 .add-row{display:flex;gap:10px;flex-wrap:wrap;padding:12px 0;margin-bottom:28px}.btn-add{display:inline-flex;align-items:center;gap:8px;background:rgba(200,168,75,.04);border:1px dashed var(--gold-dim);color:var(--gold-dim);padding:9px 18px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.25em;text-transform:uppercase;cursor:pointer}
@@ -55,12 +55,13 @@ main{padding:32px 40px;max-width:900px;margin:0 auto}
 footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);letter-spacing:.18em;flex-wrap:wrap;gap:10px;margin-top:20px}
 .mob-arrows{display:none;flex-direction:column;gap:2px;align-items:center;justify-content:center;padding:0 4px}
 .btn-mv{background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;line-height:1;cursor:pointer;padding:0;border-radius:2px;width:26px;height:22px;display:flex;align-items:center;justify-content:center}.btn-mv:active{border-color:var(--gold);color:var(--gold)}.btn-mv:disabled{opacity:.2;cursor:default}
-@media(max-width:640px){header,main,footer{padding-left:16px;padding-right:16px}.toolbar{padding:10px 16px;gap:6px}.tbtn .lbl{display:none}.tbtn{padding:9px 12px}.inp-artist,.inp-comment{display:none}.mob-arrows{display:flex}.c-num{cursor:default;font-size:14px}}
+.btn-edit{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 5px;line-height:1;display:flex;align-items:center;justify-content:center;width:28px;flex-shrink:0}.btn-edit:hover{color:var(--gold)}
+@media(max-width:640px){header,main,footer{padding-left:16px;padding-right:16px}.toolbar{padding:10px 16px;gap:6px}.tbtn .lbl{display:none}.tbtn{padding:9px 12px}.inp-artist,.inp-comment{display:none}.mob-arrows{display:flex}.c-num{cursor:default;font-size:14px}.btn-edit{display:none}}
 </style>
 </head>
 <body>
 <header>
-  <input class="ef band-name-input" id="band-name" value="Super Sexy Big Boys Band" placeholder="Nom du groupe">
+  <input class="ef band-name-input" id="band-name" value="Mon Groupe" placeholder="Nom du groupe">
   <div class="badge-row" id="badge-row"></div>
 </header>
 <div class="toolbar">
@@ -72,7 +73,8 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   <button class="tbtn" id="btn-theme-toggle" type="button" title="Basculer Dark / Sépia / Light"><span id="theme-icon">☀</span><span class="lbl" id="theme-lbl">Sépia</span></button>
   <button class="tbtn" id="btn-localsave" type="button" style="border-color:rgba(39,174,96,.4);color:#58d68d;background:rgba(39,174,96,.05);" title="Sauvegarde dans le navigateur — persiste sans télécharger"><span>&#128204;</span><span class="lbl" id="localsave-lbl">Sauvegarde auto</span></button>
   <button class="tbtn imp" id="btn-texte" type="button"><span>📋</span><span class="lbl">Texte</span></button>
-  <button class="tbtn" id="btn-share" type="button" style="border-color:rgba(155,89,182,.5);color:#9b59b6;background:rgba(155,89,182,.06);"><span>🔗</span><span class="lbl">Partager</span></button>
+  <button class="tbtn" id="btn-new-session" type="button" style="border-color:rgba(155,89,182,.3);color:#9b59b6;background:rgba(155,89,182,.04);" title="Nouvelle setlist offline"><span>+</span><span class="lbl">Nouvelle session</span></button>
+  <button class="tbtn" id="btn-share" type="button" style="border-color:rgba(155,89,182,.5);color:#9b59b6;background:rgba(155,89,182,.06);"><span>🔗</span><span class="lbl" id="share-btn-lbl">Partager</span></button>
   <span id="ws-indicator" title="Non connecté" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;margin-left:2px;transition:background .4s;"></span>
 </div>
 <main>
@@ -81,14 +83,18 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   <div class="add-row"><button class="btn-add" id="btn-add-song" type="button"><span style="font-size:15px">+</span> Titre</button><button class="btn-add" id="btn-add-sep" type="button">— Séparateur</button></div>
 </main>
 <footer>
-  <div id="band-title" style="color:var(--gold)">SUPER SEXY BIG BOYS BAND • SETLIST</div>
+  <div id="band-title" style="color:var(--gold)">MON GROUPE • SETLIST</div>
   <div><input class="ef" id="footer-venue" value="" style="color:var(--gold-light);font-size:10px;letter-spacing:.18em;width:180px" placeholder="Lieu"></div>
-  <div id="footer-badge2" style="color:var(--gold);font-size:10px;letter-spacing:.18em;">2 juin 2026</div>
+  <div id="footer-badge2" style="color:var(--gold);font-size:10px;letter-spacing:.18em;">Date</div>
 </footer>
 <div class="overlay" id="share-ov"><div class="import-box" style="max-width:480px;">
   <div class="import-title" style="color:#9b59b6;">🔗 Partager la session</div>
   <div class="import-sub" id="share-status-line">Génère un lien permanent pour ton groupe</div>
-  <div style="margin:16px 0 8px;">
+  <div style="margin:12px 0 8px;">
+    <div class="sh-lbl">Ton nom dans la session</div>
+    <input id="share-peer-name" type="text" class="sh-inp" placeholder="Ex : Guitare, Chef, Elie…" style="margin-top:6px;" maxlength="24">
+  </div>
+  <div style="margin:12px 0 8px;">
     <div class="sh-lbl">Lien de la session</div>
     <div style="display:flex;gap:8px;margin-top:6px;">
       <input id="share-url-input" readonly style="flex:1;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;padding:10px 12px;border-radius:4px;outline:none;min-width:0;" placeholder="Clique sur Créer pour générer un lien…">
@@ -97,7 +103,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   </div>
   <div id="share-peers" style="font-size:10px;color:var(--muted);letter-spacing:.15em;min-height:18px;margin-bottom:4px;"></div>
   <div class="import-btns" style="margin-top:14px;">
-    <button id="btn-share-create" class="btn-imp" type="button">✦ Créer / Rejoindre</button>
+    <button id="btn-share-create" class="btn-imp" type="button">🌐 Mettre en ligne</button>
     <button id="btn-share-disconnect" class="btn-imp" type="button" style="background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.4);color:#e74c3c;display:none;">✕ Déconnecter</button>
     <button class="btn-cancel" id="btn-cancel-share" type="button">Fermer</button>
   </div>
@@ -107,27 +113,13 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   </div>
 </div></div>
 <div class="overlay" id="texte-ov"><div class="import-box"><div class="import-title">📋 Texte</div><div class="import-sub">Export de la setlist — modifie et applique pour importer</div><textarea class="import-ta" id="texte-ta" placeholder="La setlist apparaîtra ici…"></textarea><div class="import-hint">Formats : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note</code><br>Ligne vide ou <code>---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-copy-texte" type="button">⎘ Copier</button><button class="btn-imp" id="btn-apply-texte" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Appliquer</button><button class="btn-cancel" id="btn-cancel-texte" type="button">Fermer</button></div></div></div>
-<div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-ttl" id="sh-name">—</div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><button class="sheet-close" id="sh-close" type="button">Fermer</button></div></div>
+<div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-ttl" id="sh-name">—</div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><div class="sh-lbl">🔗 Lien privé <span style="font-weight:normal;opacity:.6">(non imprimé)</span></div><input type="url" class="sh-inp" id="sh-private-url" placeholder="https://youtu.be/…"><div class="sh-lbl">📝 Note privée <span style="font-weight:normal;opacity:.6">(non imprimée)</span></div><textarea class="sh-inp" id="sh-private-note" placeholder="Accord de départ, arrangements, remarques…" style="resize:vertical;min-height:72px;line-height:1.5;font-family:'Space Mono',monospace;font-size:12px;"></textarea><button class="sheet-close" id="sh-close" type="button">Fermer</button></div></div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo" type="button">Annuler</button></div>
 <div class="pdf-ov" id="pdf-ov"><div class="spinner"></div><div class="pdf-txt">Génération du PDF…</div></div><div id="pdf-tgt"></div>
 <script>
-let headerBadges=[{id:'hb1',label:'Bruxelles'},{id:'hb2',label:'2 juin 2026'}];
+let headerBadges=[{id:'hb1',label:'Mon groupe'},{id:'hb2',label:'Date'}];
 let nextBadgeId=3;
-let items=[
-  {type:'song',id:'s1', title:'Intro',              artist:'SSBBB',         duration:'2:00', comment:''},
-  {type:'song',id:'s2', title:'PANJABI / HUMMA',     artist:'Panjabi MC',    duration:'1:15', comment:'short version'},
-  {type:'song',id:'s3', title:'Zouz Medley',         artist:'SSBBB',         duration:'5:00', comment:''},
-  {type:'song',id:'s4', title:'Uptown Funk',         artist:'Bruno Mars',    duration:'3:30', comment:''},
-  {type:'song',id:'s5', title:"Can't Hold Us",       artist:'Macklemore & Ryan Lewis',          duration:'4:30', comment:''},
-  {type:'song',id:'s6', title:'Vida Es Un Carnaval', artist:'Celia Cruz',    duration:'3:19', comment:''},
-  {type:'song',id:'s7', title:'La Tortura',          artist:'Shakira',       duration:'3:20', comment:''},
-  {type:'song',id:'s8', title:'Uprising',            artist:'Muse',          duration:'5:05', comment:''},
-  {type:'song',id:'s9', title:'Jump Around',         artist:'House of Pain', duration:'3:34', comment:''},
-  {type:'song',id:'s10',title:'Gasolina',            artist:'Daddy Yankee',  duration:'3:12', comment:''},
-  {type:'song',id:'s11',title:'All by Myself',       artist:'Céline Dion',             duration:'2:12', comment:'C, modulation EMaj, short version'},
-  {type:'song',id:'s12',title:'Queen Medley',        artist:'SSBBB',         duration:'8:15', comment:''},
-  {type:'song',id:'s13',title:' Yourself', artist:'Georges Eminem', duration:'5:21', comment:'intro Careless whisper 🎷 - dernier refrain en Cumbia'},
-];
+let items=[];
 let nextId=100, dragSrcId=null;
 const $=id=>document.getElementById(id);
 const mob=()=>window.innerWidth<=640||'ontouchstart' in window;
@@ -136,16 +128,21 @@ const fmtDur=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 function updateTotals(){const songs=items.filter(i=>i.type==='song'); const secs=songs.reduce((a,s)=>a+parseDur(s.duration),0); $('total-time').textContent=fmtDur(secs); $('total-count').textContent=songs.length+' titre'+(songs.length!==1?'s':'')}
 function subBefore(idx){let sum=0; for(let i=idx-1;i>=0;i--){if(items[i].type==='sep')break; sum+=parseDur(items[i].duration)} return sum}
 function refreshSubs(){items.forEach((item,idx)=>{if(item.type!=='sep')return; const el=document.querySelector(`[data-sub="${item.id}"]`); if(el)el.textContent=fmtDur(subBefore(idx))})}
-function renderBadges(){const row=$('badge-row'); row.innerHTML=''; headerBadges.forEach(b=>{const d=document.createElement('div'); d.className='hbadge'; const inp=document.createElement('input'); inp.className='badge-ef'; inp.value=b.label; inp.style.minWidth=Math.max(50,b.label.length*8)+'px'; inp.oninput=()=>{b.label=inp.value; inp.style.minWidth=Math.max(50,inp.value.length*8)+'px'; syncFooter();}; d.appendChild(inp); const del=document.createElement('button'); del.className='badge-del'; del.type='button'; del.innerHTML='×'; del.onclick=()=>{headerBadges=headerBadges.filter(x=>x.id!==b.id); renderBadges()}; d.appendChild(del); row.appendChild(d)}); const add=document.createElement('button'); add.type='button'; add.className='btn-add-badge'; add.textContent='+ badge'; add.onclick=()=>{headerBadges.push({id:'hb'+nextBadgeId++,label:'Nouveau'}); renderBadges(); const ins=row.querySelectorAll('.badge-ef'); if(ins.length){ins[ins.length-1].focus();ins[ins.length-1].select()}}; row.appendChild(add); syncFooter();}
+function renderBadges(){const row=$('badge-row'); row.innerHTML=''; headerBadges.forEach(b=>{const d=document.createElement('div'); d.className='hbadge'; const inp=document.createElement('input'); inp.className='badge-ef'; inp.value=b.label; inp.style.minWidth=Math.max(50,b.label.length*8)+'px'; inp.oninput=()=>{b.label=inp.value; inp.style.minWidth=Math.max(50,inp.value.length*8)+'px'; syncFooter();}; d.appendChild(inp); const del=document.createElement('button'); del.className='badge-del'; del.type='button'; del.innerHTML='×'; del.onclick=()=>{headerBadges=headerBadges.filter(x=>x.id!==b.id); renderBadges()}; d.appendChild(del); row.appendChild(d)}); const add=document.createElement('button'); add.type='button'; add.className='btn-add-badge'; add.textContent='+ badge'; add.onclick=()=>{headerBadges.push({id:'hb'+nextBadgeId++,label:'Nouveau'}); renderBadges(); const ins=row.querySelectorAll('.badge-ef'); if(ins.length){ins[ins.length-1].focus();ins[ins.length-1].select()}}; row.appendChild(add); syncFooter(); wsPatch();}
 function renderList(){const body=$('list-body'); body.innerHTML=''; let num=0; items.forEach((item,idx)=>{if(item.type==='sep') body.appendChild(makeSep(item,idx)); else {num++; body.appendChild(makeSong(item,num));}}); updateTotals()}
-function makeSong(song,num){const row=document.createElement('div'); row.className='row-song'; row.dataset.id=song.id; row.draggable=true; const cn=document.createElement('div'); cn.className='c-num'; cn.textContent=num; row.appendChild(cn); const cm=document.createElement('div'); cm.className='c-main'; const ti=document.createElement('input'); ti.type='text'; ti.className='inp-title'; ti.value=song.title; ti.placeholder='Titre…'; ti.oninput=()=>song.title=ti.value; ti.onclick=e=>{if(mob()){e.preventDefault(); openSheet(song)}}; cm.appendChild(ti); const ar=document.createElement('input'); ar.type='text'; ar.className='inp-artist'; ar.value=song.artist; ar.placeholder='Artiste…'; ar.oninput=()=>song.artist=ar.value; cm.appendChild(ar); const co=document.createElement('input'); co.type='text'; co.className='inp-comment'; co.value=song.comment; co.placeholder='Note scène…'; co.oninput=()=>song.comment=co.value; cm.appendChild(co); row.appendChild(cm); const cd=document.createElement('div'); cd.className='c-dur'; const di=document.createElement('input'); di.type='text'; di.className='inp-dur'; di.value=song.duration; di.placeholder='0:00'; di.oninput=()=>{song.duration=di.value; updateTotals(); refreshSubs()}; di.onblur=()=>{const s=parseDur(di.value); di.value=fmtDur(s); song.duration=di.value; updateTotals(); refreshSubs()}; cd.appendChild(di); row.appendChild(cd); const cdel=document.createElement('div'); cdel.className='c-del'; const db=document.createElement('button'); db.type='button'; db.className='btn-del'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===song.id); const label=song.title||'Sans titre'; items=items.filter(i=>i.id!==song.id); renderList(); showToast(`"${label}" supprimé`,()=>{items.splice(idx,0,song)})}; cdel.appendChild(db); row.appendChild(cdel); // Mobile move buttons ↑ ↓
+function makeSong(song,num){const row=document.createElement('div'); row.className='row-song'; row.dataset.id=song.id; row.draggable=true; const cn=document.createElement('div'); cn.className='c-num'; cn.textContent=num; row.appendChild(cn); const cm=document.createElement('div'); cm.className='c-main'; const ti=document.createElement('input'); ti.type='text'; ti.className='inp-title'; ti.value=song.title; ti.placeholder='Titre…'; ti.oninput=()=>song.title=ti.value; ti.onclick=e=>{if(mob()){e.preventDefault(); openSheet(song)}}; cm.appendChild(ti); const ar=document.createElement('input'); ar.type='text'; ar.className='inp-artist'; ar.value=song.artist; ar.placeholder='Artiste…'; ar.oninput=()=>song.artist=ar.value; cm.appendChild(ar); const co=document.createElement('input'); co.type='text'; co.className='inp-comment'; co.value=song.comment; co.placeholder='Note scène…'; co.oninput=()=>song.comment=co.value; cm.appendChild(co); row.appendChild(cm);
+ // Icône lien privé (visible si privateUrl renseigné)
+ if(song.privateUrl){const li=document.createElement('a'); li.className='song-link-icon'; li.href=song.privateUrl; li.target='_blank'; li.rel='noopener'; li.title=song.privateUrl; li.textContent='🔗'; row.appendChild(li);} const cd=document.createElement('div'); cd.className='c-dur'; const di=document.createElement('input'); di.type='text'; di.className='inp-dur'; di.value=song.duration; di.placeholder='0:00'; di.oninput=()=>{song.duration=di.value; updateTotals(); refreshSubs()}; di.onblur=()=>{const s=parseDur(di.value); di.value=fmtDur(s); song.duration=di.value; updateTotals(); refreshSubs()}; cd.appendChild(di); row.appendChild(cd); const cdel=document.createElement('div'); cdel.className='c-del'; const db=document.createElement('button'); db.type='button'; db.className='btn-del'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===song.id); const label=song.title||'Sans titre'; items=items.filter(i=>i.id!==song.id); renderList(); showToast(`"${label}" supprimé`,()=>{items.splice(idx,0,song)})}; cdel.appendChild(db); row.appendChild(cdel); // Mobile move buttons ↑ ↓
  const cma=document.createElement('div'); cma.className='mob-arrows';
  const bup=document.createElement('button'); bup.type='button'; bup.className='btn-mv'; bup.innerHTML='▲'; bup.title='Monter';
  const bdn=document.createElement('button'); bdn.type='button'; bdn.className='btn-mv'; bdn.innerHTML='▼'; bdn.title='Descendre';
  bup.onclick=()=>{const fi=items.findIndex(i=>i.id===song.id); if(fi<=0)return; const[m]=items.splice(fi,1); items.splice(fi-1,0,m); renderList()};
  bdn.onclick=()=>{const fi=items.findIndex(i=>i.id===song.id); if(fi>=items.length-1)return; const[m]=items.splice(fi,1); items.splice(fi+1,0,m); renderList()};
  cma.appendChild(bup); cma.appendChild(bdn); row.appendChild(cma);
- row.addEventListener('dragstart',e=>{dragSrcId=song.id; e.dataTransfer.effectAllowed='move'; row.style.opacity='.35'}); row.addEventListener('dragend',()=>{row.style.opacity=''; dragSrcId=null}); row.addEventListener('dragover',e=>{e.preventDefault(); row.classList.add('drag-over')}); row.addEventListener('dragleave',()=>row.classList.remove('drag-over')); row.addEventListener('drop',e=>{e.preventDefault(); row.classList.remove('drag-over'); if(!dragSrcId||dragSrcId===song.id)return; const fi=items.findIndex(i=>i.id===dragSrcId); const ti2=items.findIndex(i=>i.id===song.id); const [m]=items.splice(fi,1); items.splice(ti2,0,m); renderList()}); return row}
+ // Bouton édition desktop (ouvre le sheet)
+ const cedit=document.createElement('button'); cedit.type='button'; cedit.className='btn-edit'; cedit.innerHTML='✎'; cedit.title='Éditer / champs privés'; cedit.onclick=()=>openSheet(song); row.appendChild(cedit);
+ row.addEventListener('dragstart',e=>{dragSrcId=song.id; e.dataTransfer.effectAllowed='move'; row.style.opacity='.35'}); row.addEventListener('dragend',()=>{row.style.opacity=''; dragSrcId=null}); row.addEventListener('dragover',e=>{e.preventDefault(); row.classList.add('drag-over')}); row.addEventListener('dragleave',()=>row.classList.remove('drag-over')); row.addEventListener('drop',e=>{e.preventDefault(); row.classList.remove('drag-over'); if(!dragSrcId||dragSrcId===song.id)return; const fi=items.findIndex(i=>i.id===dragSrcId); const ti2=items.findIndex(i=>i.id===song.id); const [m]=items.splice(fi,1); items.splice(ti2,0,m); renderList()});
+ return row}
 /* ══ TOAST UNDO ══ */
 let _toastTimer=null;
 function showToast(msg, undoFn){
@@ -159,7 +156,7 @@ function showToast(msg, undoFn){
   _toastTimer=setTimeout(dismiss, 4000);
 }
 function makeSep(sep,idx){const row=document.createElement('div'); row.className='row-sep'; const ll=document.createElement('div'); ll.className='sep-line-l'; row.appendChild(ll); const badge=document.createElement('div'); badge.className='sep-badge'; const li=document.createElement('input'); li.className='inp-sep'; li.value=sep.label; li.placeholder='Séparateur…'; li.style.width=Math.max(60,sep.label.length*9)+'px'; li.oninput=()=>{sep.label=li.value; li.style.width=Math.max(60,li.value.length*9)+'px'}; badge.appendChild(li); const sub=document.createElement('span'); sub.className='sep-sub'; sub.dataset.sub=sep.id; sub.textContent=fmtDur(subBefore(idx)); badge.appendChild(sub); const db=document.createElement('button'); db.type='button'; db.className='btn-del-sep'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===sep.id); items=items.filter(i=>i.id!==sep.id); renderList(); showToast(`Séparateur "${sep.label}" supprimé`,()=>{items.splice(idx,0,sep)})}; badge.appendChild(db); row.appendChild(badge); const lr=document.createElement('div'); lr.className='sep-line-r'; row.appendChild(lr); return row}
-function addSong(d={}){items.push({type:'song',id:'s'+nextId++,title:d.title||'',artist:d.artist||'',duration:d.duration||'0:00',comment:d.comment||''}); renderList()}
+function addSong(d={}){items.push({type:'song',id:'s'+nextId++,title:d.title||'',artist:d.artist||'',duration:d.duration||'0:00',comment:d.comment||'',privateUrl:d.privateUrl||'',privateNote:d.privateNote||''}); renderList()}
 function addSep(lbl=''){items.push({type:'sep',id:'sep'+nextId++,label:lbl||'— Pause —'}); renderList()}
 function openSheet(song){
   $('sh-name').textContent=song.title||'Nouveau titre';
@@ -167,11 +164,15 @@ function openSheet(song){
   $('sh-artist').value=song.artist||'';
   $('sh-dur').value=song.duration||'';
   $('sh-comment').value=song.comment||'';
+  $('sh-private-url').value=song.privateUrl||'';
+  $('sh-private-note').value=song.privateNote||'';
   $('sh-title').oninput=()=>{song.title=$('sh-title').value; $('sh-name').textContent=song.title||'—'};
   $('sh-artist').oninput=()=>{song.artist=$('sh-artist').value};
   $('sh-dur').oninput=()=>{song.duration=$('sh-dur').value};
   $('sh-dur').onblur=()=>{const s=parseDur($('sh-dur').value); $('sh-dur').value=fmtDur(s); song.duration=$('sh-dur').value};
   $('sh-comment').oninput=()=>{song.comment=$('sh-comment').value};
+  $('sh-private-url').oninput=()=>{song.privateUrl=$('sh-private-url').value};
+  $('sh-private-note').oninput=()=>{song.privateNote=$('sh-private-note').value};
   $('sheet-ov').classList.add('open');
   setTimeout(()=>$('sh-title').focus(),100);
 }
@@ -259,7 +260,6 @@ function buildPdfHtml(mode){
       currentPage=[]; currentH=0;
     }
     currentPage.push({item,idx,sn:item.type==='song'?++sn:sn});
-    if(item.type==='song') {} // sn already incremented
     currentH+=h;
   });
   if(currentPage.length) pages.push(currentPage);
@@ -556,12 +556,23 @@ let ws = null;
 let wsSessionId = null;
 let wsSuppressPatch = false; // évite la boucle : patch reçu → renderList → patch émis
 
+function wsPeerName(){
+  return ($('share-peer-name')?.value.trim()) || 'Anonyme';
+}
+
 function wsIndicator(state){
   // state : 'off' | 'connecting' | 'on'
   const el = $('ws-indicator');
   if(!el) return;
   el.style.background = state==='on' ? '#58d68d' : state==='connecting' ? '#f39c12' : 'var(--muted)';
-  el.title = state==='on' ? 'Connecté à la session' : state==='connecting' ? 'Connexion…' : 'Non connecté';
+  el.title = state==='on' ? `Connecté — session ${wsSessionId}` : state==='connecting' ? 'Connexion…' : 'Non connecté';
+  // Nom dans le bouton toolbar
+  const lbl = $('share-btn-lbl');
+  if(lbl){
+    if(state==='on') lbl.textContent = wsPeerName() || 'En ligne';
+    else if(state==='connecting') lbl.textContent = '…';
+    else lbl.textContent = 'Partager';
+  }
 }
 
 function wsGetState(){
@@ -600,8 +611,8 @@ function wsUpdateShareUI(){
   if(createBtn) createBtn.style.display = connected ? 'none' : '';
   if(discBtn)   discBtn.style.display   = connected ? '' : 'none';
   if(statusLine) statusLine.textContent = connected
-    ? `Session active : ${wsSessionId}`
-    : 'Génère un lien permanent pour ton groupe';
+    ? `En ligne — session ${wsSessionId} — connecté en tant que ${wsPeerName()}`
+    : 'Travaille offline ou génère un lien pour partager avec ton groupe';
 }
 
 function wsConnect(sessionId){
@@ -663,6 +674,7 @@ function wsConnect(sessionId){
 }
 
 function wsDisconnect(){
+  const prevId = wsSessionId;
   wsSessionId = null;
   if(ws){ ws.close(); ws = null; }
   wsIndicator('off');
@@ -686,7 +698,21 @@ function wsRandomId(){
   return id;
 }
 
-// Bouton Partager
+// ── Bouton "Nouvelle session" (offline, setlist vide) ──
+$('btn-new-session').addEventListener('click', ()=>{
+  if((items.length > 0 || ws) && !confirm('Créer une nouvelle setlist ? La session actuelle sera perdue (pense à sauvegarder d\'abord).')) return;
+  wsDisconnect();
+  items = [];
+  headerBadges = [{id:'hb'+nextBadgeId++,label:'Mon groupe'},{id:'hb'+nextBadgeId++,label:'Date'}];
+  $('band-name').value = 'Mon Groupe';
+  $('footer-venue').value = '';
+  renderBadges();
+  renderList();
+  syncFooter();
+  showToast('Nouvelle session créée — offline', ()=>{});
+});
+
+// ── Bouton Partager ──
 $('btn-share').addEventListener('click', ()=>{
   wsUpdateShareUI();
   // Pré-remplir l'input si session déjà active
@@ -705,7 +731,6 @@ $('btn-cancel-share').addEventListener('click', ()=> $('share-ov').classList.rem
 $('share-ov').addEventListener('click', e=>{ if(e.target===$('share-ov')) $('share-ov').classList.remove('open'); });
 
 $('btn-share-create').addEventListener('click', ()=>{
-  // Si l'input contient déjà un ?s=, on l'utilise ; sinon on génère
   const shareInput = $('share-url-input');
   let sessionId = wsSessionId;
   if(!sessionId){
