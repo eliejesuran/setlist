@@ -18,7 +18,11 @@ const ALLOWED_ORIGINS = [
   'https://eliejesuran.github.io',
   'http://localhost',        // dev local
   'http://127.0.0.1',       // dev local
+  'file://',                 // fichier ouvert localement (file://)
 ];
+// origin="null" est envoyé par les navigateurs quand le fichier est ouvert
+// en file:// ou depuis un contexte opaque — on l'autorise explicitement
+const ALLOW_NULL_ORIGIN = true;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;  // fenêtre de 1 minute
 const RATE_LIMIT_MAX       = 10;          // max 10 connexions par IP par minute
 
@@ -105,7 +109,11 @@ const wss = new WebSocketServer({
              || req.socket.remoteAddress;
 
     // 1. Origin check
-    const originOk = !origin || ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+    // origin peut être : absent (undefined), "null" (string, file:// ou contexte opaque),
+    // ou une URL complète. On autorise les origines listées + null si ALLOW_NULL_ORIGIN.
+    const originOk = !origin
+      || (ALLOW_NULL_ORIGIN && origin === 'null')
+      || ALLOWED_ORIGINS.some(o => origin.startsWith(o));
     if (!originOk) {
       console.warn(`[blocked] origin="${origin}" ip=${ip}`);
       return cb(false, 403, 'Forbidden');
@@ -208,7 +216,7 @@ wss.on('connection', (ws, req) => {
 
 wss.on('listening', () => {
   console.log(`SSBBB server — ws://localhost:${PORT}`);
-  console.log(`Origins autorisées : ${ALLOWED_ORIGINS.join(', ')}`);
+  console.log(`Origins autorisées : ${ALLOWED_ORIGINS.join(', ')}${ALLOW_NULL_ORIGIN ? ', null (file://)' : ''}`);
   console.log(`Rate limit : ${RATE_LIMIT_MAX} connexions/min/IP`);
   console.log(`Sessions max : ${MAX_SESSIONS} · TTL : ${SESSION_TTL_MS / 3600000}h · Peers/session : ${MAX_PEERS}`);
 });

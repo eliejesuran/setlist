@@ -18,7 +18,7 @@ html{-webkit-text-size-adjust:100%}
 body{background:var(--black);color:var(--white);font-family:'Space Mono',monospace;min-height:100vh;overflow-x:hidden}
 header{position:relative;padding:40px 40px 32px;border-bottom:1px solid var(--border);padding-top:50px}
 .header-controls{position:absolute;top:12px;right:16px;display:flex;gap:6px;align-items:center;z-index:10}
-.hbtn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;border-radius:2px;border:1px solid var(--border);color:var(--muted);background:transparent;white-space:nowrap;transition:border-color .2s,color .2s}.hbtn:hover{border-color:var(--gold-dim);color:var(--gold)}
+.hbtn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;border-radius:2px;border:1px solid var(--gold-dim);color:var(--gold);background:rgba(200,168,75,.05);white-space:nowrap;transition:border-color .2s,color .2s,background .2s}.hbtn:hover{background:rgba(200,168,75,.14);border-color:var(--gold)}
 header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
 .ef{background:transparent;border:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;outline:none;cursor:text;width:100%;border-bottom:1px dashed transparent;transition:border-color .2s}.ef:focus{border-bottom-color:var(--gold-dim)}
 .band-name-input{font-family:'Bebas Neue',sans-serif;font-size:clamp(38px,8vw,100px);letter-spacing:.08em;line-height:.9;color:var(--white);display:block}
@@ -608,6 +608,21 @@ function wsPatch(){
   ws.send(JSON.stringify({ type:'patch', state: wsGetState() }));
 }
 
+// U14 : affiche le TTL restant de la session dans l'overlay de partage
+let _wsConnectedAt = null;
+const WS_SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8h, même valeur que le serveur
+function wsUpdateTtl(){
+  const el = $('share-ttl');
+  if(!el) return;
+  const connected = ws && ws.readyState === WebSocket.OPEN;
+  if(!connected || !_wsConnectedAt){ el.textContent = ''; return; }
+  const elapsed = Date.now() - _wsConnectedAt;
+  const remaining = Math.max(0, WS_SESSION_TTL_MS - elapsed);
+  const h = Math.floor(remaining / 3600000);
+  const m = Math.floor((remaining % 3600000) / 60000);
+  el.textContent = `Session expire dans ${h}h${String(m).padStart(2,'0')}`;
+}
+
 function wsUpdateShareUI(){
   const connected = ws && ws.readyState === WebSocket.OPEN;
   const createBtn = $('btn-share-create');
@@ -626,7 +641,7 @@ function wsUpdateShareUI(){
   if(btnTexte){ btnTexte.style.opacity=dim; btnTexte.style.pointerEvents=pe; btnTexte.title=connected?'Indisponible en session collaborative':''; }
   if(btnSave) { btnSave.style.opacity=dim;  btnSave.style.pointerEvents=pe;  btnSave.title=connected?'Indisponible en session collaborative':'Sauvegarde dans le navigateur — persiste sans télécharger'; }
   // U14 : TTL de la session
-  //wsUpdateTtl();
+  wsUpdateTtl();
 }
 
 function wsConnect(sessionId){
@@ -637,6 +652,7 @@ function wsConnect(sessionId){
   ws = new WebSocket(`${WS_SERVER}/session/${sessionId}`);
 
   ws.onopen = () => {
+    _wsConnectedAt = Date.now();
     wsIndicator('on');
     wsUpdateShareUI();
     // Mettre à jour l'URL du navigateur sans recharger
@@ -690,6 +706,7 @@ function wsConnect(sessionId){
 function wsDisconnect(){
   const prevId = wsSessionId;
   wsSessionId = null;
+  _wsConnectedAt = null;
   if(ws){ ws.close(); ws = null; }
   wsIndicator('off');
   wsUpdateShareUI();
