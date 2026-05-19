@@ -16,7 +16,9 @@
 :root{--black:#0a0a0a;--card:#161616;--border:#2a2a2a;--gold:#c8a84b;--gold-dim:#6b5a28;--gold-light:#D9C382;--white:#f0ece0;--grey:#888880;--muted:#444440;--blue:#5dade2}
 html{-webkit-text-size-adjust:100%}
 body{background:var(--black);color:var(--white);font-family:'Space Mono',monospace;min-height:100vh;overflow-x:hidden}
-header{position:relative;padding:40px 40px 32px;border-bottom:1px solid var(--border)}
+header{position:relative;padding:40px 40px 32px;border-bottom:1px solid var(--border);padding-top:50px}
+.header-controls{position:absolute;top:12px;right:16px;display:flex;gap:6px;align-items:center;z-index:10}
+.hbtn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;border-radius:2px;border:1px solid var(--border);color:var(--muted);background:transparent;white-space:nowrap;transition:border-color .2s,color .2s}.hbtn:hover{border-color:var(--gold-dim);color:var(--gold)}
 header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
 .ef{background:transparent;border:none;color:inherit;font-family:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;outline:none;cursor:text;width:100%;border-bottom:1px dashed transparent;transition:border-color .2s}.ef:focus{border-bottom-color:var(--gold-dim)}
 .band-name-input{font-family:'Bebas Neue',sans-serif;font-size:clamp(38px,8vw,100px);letter-spacing:.08em;line-height:.9;color:var(--white);display:block}
@@ -49,18 +51,22 @@ main{padding:32px 40px;max-width:900px;margin:0 auto}
 .import-ta{width:100%;height:190px;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:12px;padding:12px;outline:none;border-radius:4px;resize:vertical;line-height:1.7}
 .import-hint{font-size:10px;color:var(--muted);margin:10px 0 16px;line-height:1.8}.import-hint code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:2px;color:var(--grey)}
 .import-btns{display:flex;gap:10px}.btn-imp{flex:1;padding:11px;background:rgba(93,173,226,.1);border:1px solid rgba(93,173,226,.4);color:var(--blue);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:3px}.btn-cancel{padding:11px 18px;background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:3px}
-.sheet-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:400;align-items:flex-end;justify-content:center}.sheet-ov.open{display:flex}.sheet{background:#1c1c1c;border:1px solid var(--border);border-bottom:none;border-radius:16px 16px 0 0;padding:20px 20px 40px;width:100%;max-width:600px}.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px}.sheet-ttl{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.1em;color:var(--gold);margin-bottom:4px}.sh-lbl{font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}.sh-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:12px;padding:10px 14px;outline:none;border-radius:4px}.sh-row2{display:flex;gap:10px}.sh-row2 .sh-inp{flex:1}.sh-dur{width:90px!important;flex:none!important}.sheet-close{width:100%;padding:13px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--grey);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:4px;margin-top:16px}
+.sheet-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:400;align-items:flex-end;justify-content:center}.sheet-ov.open{display:flex}.sheet{background:var(--card);border:1px solid var(--border);border-bottom:none;border-radius:16px 16px 0 0;padding:20px 20px 40px;width:100%;max-width:600px}.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px}.sheet-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.sheet-ttl{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.1em;color:var(--gold)}.sheet-close-top{background:none;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:14px;cursor:pointer;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.sheet-close-top:hover{border-color:var(--gold-dim);color:var(--gold)}.sh-lbl{font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}.sh-inp{width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:12px;padding:10px 14px;outline:none;border-radius:4px}.sh-row2{display:flex;gap:10px}.sh-row2 .sh-inp{flex:1}.sh-dur{width:90px!important;flex:none!important}.sheet-close{width:100%;padding:13px;background:var(--black);border:1px solid var(--border);color:var(--grey);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:4px;margin-top:16px}
 #toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e1e1e;border:1px solid var(--gold-dim);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;padding:12px 20px;border-radius:4px;display:flex;align-items:center;gap:16px;z-index:9999;opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;white-space:nowrap}#toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}#toast-undo{background:none;border:1px solid var(--gold);color:var(--gold);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:2px}#toast-undo:hover{background:rgba(200,168,75,.15)}
 .pdf-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px}.pdf-ov.active{display:flex}.pdf-txt{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.2em;color:var(--gold)}.spinner{width:40px;height:40px;border:3px solid var(--gold-dim);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}#pdf-tgt{position:fixed;left:-9999px;top:0;width:794px;pointer-events:none}
 footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);letter-spacing:.18em;flex-wrap:wrap;gap:10px;margin-top:20px}
 .mob-arrows{display:none;flex-direction:column;gap:2px;align-items:center;justify-content:center;padding:0 4px}
 .btn-mv{background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;line-height:1;cursor:pointer;padding:0;border-radius:2px;width:26px;height:22px;display:flex;align-items:center;justify-content:center}.btn-mv:active{border-color:var(--gold);color:var(--gold)}.btn-mv:disabled{opacity:.2;cursor:default}
 .btn-edit{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 5px;line-height:1;display:flex;align-items:center;justify-content:center;width:28px;flex-shrink:0}.btn-edit:hover{color:var(--gold)}
-@media(max-width:640px){header,main,footer{padding-left:16px;padding-right:16px}.toolbar{padding:10px 16px;gap:6px}.tbtn .lbl{display:none}.tbtn{padding:9px 12px}.inp-artist,.inp-comment{display:none}.mob-arrows{display:flex}.c-num{cursor:default;font-size:14px}.btn-edit{display:none}}
+@media(max-width:640px){header,main,footer{padding-left:16px;padding-right:16px}.toolbar{padding:10px 16px;gap:6px}.tbtn .lbl{display:none}.tbtn{padding:9px 12px}.inp-artist,.inp-comment{display:none}.mob-arrows{display:flex}.c-num{cursor:default;font-size:14px}.btn-edit{display:none}.hbtn .lbl{display:none}}
 </style>
 </head>
 <body>
 <header>
+  <div class="header-controls">
+    <button class="hbtn" id="btn-theme-toggle" type="button" title="Basculer Dark / Sépia / Light"><span id="theme-icon">☀</span><span class="lbl" id="theme-lbl">Sépia</span></button>
+    <button class="hbtn" id="btn-new-session" type="button" title="Nouvelle setlist offline"><span>+</span><span class="lbl">Nouveau</span></button>
+  </div>
   <input class="ef band-name-input" id="band-name" value="Mon Groupe" placeholder="Nom du groupe">
   <div class="badge-row" id="badge-row"></div>
 </header>
@@ -70,10 +76,8 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
     <input type="checkbox" id="pdf-include-timing" style="accent-color:var(--gold);cursor:pointer;">
     <span>Timing</span>
   </label>
-  <button class="tbtn" id="btn-theme-toggle" type="button" title="Basculer Dark / Sépia / Light"><span id="theme-icon">☀</span><span class="lbl" id="theme-lbl">Sépia</span></button>
   <button class="tbtn" id="btn-localsave" type="button" style="border-color:rgba(39,174,96,.4);color:#58d68d;background:rgba(39,174,96,.05);" title="Sauvegarde dans le navigateur — persiste sans télécharger"><span>&#128204;</span><span class="lbl" id="localsave-lbl">Sauvegarde auto</span></button>
   <button class="tbtn imp" id="btn-texte" type="button"><span>📋</span><span class="lbl">Texte</span></button>
-  <button class="tbtn" id="btn-new-session" type="button" style="border-color:rgba(155,89,182,.3);color:#9b59b6;background:rgba(155,89,182,.04);" title="Nouvelle setlist offline"><span>+</span><span class="lbl">Nouvelle session</span></button>
   <button class="tbtn" id="btn-share" type="button" style="border-color:rgba(155,89,182,.5);color:#9b59b6;background:rgba(155,89,182,.06);"><span>🔗</span><span class="lbl" id="share-btn-lbl">Partager</span></button>
   <span id="ws-indicator" title="Non connecté" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;margin-left:2px;transition:background .4s;"></span>
 </div>
@@ -101,7 +105,8 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
       <button id="btn-copy-share" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;" disabled>⎘</button>
     </div>
   </div>
-  <div id="share-peers" style="font-size:10px;color:var(--muted);letter-spacing:.15em;min-height:18px;margin-bottom:4px;"></div>
+  <div id="share-peers" style="font-size:10px;color:var(--muted);letter-spacing:.15em;min-height:18px;margin-bottom:2px;"></div>
+  <div id="share-ttl" style="font-size:10px;color:var(--muted);letter-spacing:.12em;min-height:16px;margin-bottom:4px;"></div>
   <div class="import-btns" style="margin-top:14px;">
     <button id="btn-share-create" class="btn-imp" type="button">🌐 Mettre en ligne</button>
     <button id="btn-share-disconnect" class="btn-imp" type="button" style="background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.4);color:#e74c3c;display:none;">✕ Déconnecter</button>
@@ -113,7 +118,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   </div>
 </div></div>
 <div class="overlay" id="texte-ov"><div class="import-box"><div class="import-title">📋 Texte</div><div class="import-sub">Export de la setlist — modifie et applique pour importer</div><textarea class="import-ta" id="texte-ta" placeholder="La setlist apparaîtra ici…"></textarea><div class="import-hint">Formats : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note</code><br>Ligne vide ou <code>---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-copy-texte" type="button">⎘ Copier</button><button class="btn-imp" id="btn-apply-texte" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Appliquer</button><button class="btn-cancel" id="btn-cancel-texte" type="button">Fermer</button></div></div></div>
-<div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-ttl" id="sh-name">—</div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><div class="sh-lbl">🔗 Lien privé <span style="font-weight:normal;opacity:.6">(non imprimé)</span></div><input type="url" class="sh-inp" id="sh-private-url" placeholder="https://youtu.be/…"><div class="sh-lbl">📝 Note privée <span style="font-weight:normal;opacity:.6">(non imprimée)</span></div><textarea class="sh-inp" id="sh-private-note" placeholder="Accord de départ, arrangements, remarques…" style="resize:vertical;min-height:72px;line-height:1.5;font-family:'Space Mono',monospace;font-size:12px;"></textarea><button class="sheet-close" id="sh-close" type="button">Fermer</button></div></div>
+<div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-header"><div class="sheet-ttl" id="sh-name">—</div><button class="sheet-close-top" id="sh-close" type="button" title="Fermer">✕</button></div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><div class="sh-lbl">🔗 Lien privé <span style="font-weight:normal;opacity:.6">(non imprimé)</span></div><input type="url" class="sh-inp" id="sh-private-url" placeholder="https://youtu.be/…"><div class="sh-lbl">📝 Note privée <span style="font-weight:normal;opacity:.6">(non imprimée)</span></div><textarea class="sh-inp" id="sh-private-note" placeholder="Accord de départ, arrangements, remarques…" style="resize:vertical;min-height:72px;line-height:1.5;font-family:'Space Mono',monospace;font-size:12px;"></textarea></div></div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo" type="button">Annuler</button></div>
 <div class="pdf-ov" id="pdf-ov"><div class="spinner"></div><div class="pdf-txt">Génération du PDF…</div></div><div id="pdf-tgt"></div>
 <script>
@@ -613,6 +618,15 @@ function wsUpdateShareUI(){
   if(statusLine) statusLine.textContent = connected
     ? `En ligne — session ${wsSessionId} — connecté en tant que ${wsPeerName()}`
     : 'Travaille offline ou génère un lien pour partager avec ton groupe';
+  // U9 : griser Texte + Sauvegarde quand connecté (source de vérité = serveur)
+  const dim = connected ? '.4' : '1';
+  const pe  = connected ? 'none' : '';
+  const btnTexte = $('btn-texte');
+  const btnSave  = $('btn-localsave');
+  if(btnTexte){ btnTexte.style.opacity=dim; btnTexte.style.pointerEvents=pe; btnTexte.title=connected?'Indisponible en session collaborative':''; }
+  if(btnSave) { btnSave.style.opacity=dim;  btnSave.style.pointerEvents=pe;  btnSave.title=connected?'Indisponible en session collaborative':'Sauvegarde dans le navigateur — persiste sans télécharger'; }
+  // U14 : TTL de la session
+  //wsUpdateTtl();
 }
 
 function wsConnect(sessionId){
