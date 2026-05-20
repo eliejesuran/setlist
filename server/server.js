@@ -102,7 +102,16 @@ function getOrCreateSession(id) {
 }
 
 // ─── Serveur WebSocket ────────────────────────────────────────────────────────
+import { createServer } from 'http';
 
+const httpServer = createServer((req, res) => {
+  if (req.url === '/healthz') {
+    res.writeHead(200); res.end('ok');
+  } else {
+    res.writeHead(404); res.end();
+  }
+});
+httpServer.listen(PORT);
 const wss = new WebSocketServer({
   server: httpServer,
   // Vérification de l'Origin à la négociation WebSocket
@@ -216,16 +225,7 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-import { createServer } from 'http';
 
-const httpServer = createServer((req, res) => {
-  if (req.url === '/healthz') {
-    res.writeHead(200); res.end('ok');
-  } else {
-    res.writeHead(404); res.end();
-  }
-});
-httpServer.listen(PORT);
 
 wss.on('listening', () => {
   console.log(`SSBBB server — ws://localhost:${PORT}`);
