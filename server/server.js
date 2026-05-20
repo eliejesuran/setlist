@@ -16,6 +16,8 @@ const MAX_PEERS      = 20;
 // Anti-bot
 const ALLOWED_ORIGINS = [
   'https://eliejesuran.github.io',
+  'https://jesuran.be',
+  'https://www.jesuran.be',
   'http://localhost',        // dev local
   'http://127.0.0.1',       // dev local
   'file://',                 // fichier ouvert localement (file://)
