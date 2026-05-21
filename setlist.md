@@ -1,6 +1,6 @@
 # SSBBB — Setlist Tool
 
-**Version :** 2026-05-19 (2)  
+**Version :** 2026-05-21  
 **Auteur :** Elie JESURAN  
 **Licence :** GPL  
 **Fichier :** `index.html` (app standalone, aucune dépendance serveur)
@@ -9,7 +9,7 @@
 
 ## Vue d'ensemble
 
-Outil de création et gestion de setlists de concerts. Application web entièrement **standalone** (un seul fichier HTML), sans backend ni base de données — tout est en mémoire JS + `localStorage`. La fonctionnalité de partage collaboratif repose sur un mini-serveur WebSocket séparé (`server/server.js`) déployé sur Fly.io.
+Outil de création et gestion de setlists de concerts. Application web entièrement **standalone** (un seul fichier HTML), sans backend ni base de données — tout est en mémoire JS + `localStorage`. La fonctionnalité de partage collaboratif repose sur un mini-serveur WebSocket séparé (`server/server.js`) déployé sur Render.
 
 ### Dépendances externes (CDN)
 | Bibliothèque | Version | Usage |
@@ -28,7 +28,7 @@ repo/
 └── server/
     ├── server.js       : serveur WebSocket (Node 20 + ws)
     ├── package.json
-    ├── fly.toml        : config déploiement Fly.io
+    ├── fly.toml        : config déploiement Fly.io (obsolète — conservé pour référence)
     ├── .env.example
     └── .gitignore      : exclut node_modules/ et .env
 ```
@@ -39,7 +39,7 @@ repo/
 index.html
 ├── <head>          : meta, fonts, scripts CDN, styles CSS (minifiés)
 ├── <body>
-│   ├── <header>    : nom du groupe + badges
+│   ├── <header>    : nom du groupe + badges + boutons thème/nouveau (coin haut-droit)
 │   ├── .toolbar    : boutons d'action (sticky)
 │   ├── <main>      : liste des titres (#list-body)
 │   ├── <footer>    : lieu + date
@@ -85,6 +85,27 @@ index.html
   label: '— Pause —'
 }
 ```
+
+---
+
+## Infrastructure
+
+### Serveur WebSocket
+
+| Paramètre | Valeur |
+|---|---|
+| Hébergeur | Render (tier gratuit) |
+| URL | `wss://setlist-21hb.onrender.com` |
+| Ancien hébergeur | Fly.io (abandonné — fin période d'essai) |
+| Keep-alive | UptimeRobot ping `/healthz` toutes les 5 min |
+| Sleep si inactif | ~1 min de cold start si UptimeRobot ne tourne pas |
+
+### Front-end (index.html)
+
+| Paramètre | Valeur |
+|---|---|
+| Hébergeur cible | Infomaniak (`jesuran.be`) |
+| Statut | ⏳ Migration en cours — fichier non encore déployé |
 
 ---
 
@@ -162,7 +183,7 @@ Pagination automatique : 42px/titre, 60px/titre+commentaire, 28px/séparateur. S
 
 ### 6. Thèmes
 
-3 thèmes en cycle via le bouton **`☀ / 📜 / 🌙`** (Dark → Sépia → Light) :
+3 thèmes en cycle via le bouton **`☀ / 📜 / 🌙`** (Dark → Sépia → Light), déplacé dans le coin haut-droit du header :
 
 | Clé | Description | PDF |
 |---|---|---|
@@ -173,12 +194,13 @@ Pagination automatique : 42px/titre, 60px/titre+commentaire, 28px/séparateur. S
 ### 7. Interface mobile
 
 - En-dessous de 640px : labels masqués, champs artiste/commentaire cachés
-- Tap sur un titre → **bottom sheet** (4 champs : Titre, Artiste, Durée, Note scène)
+- Tap sur un titre → **bottom sheet** (Titre, Artiste, Durée, Note scène, Lien privé, Note privée)
+- Bouton ✕ en haut à droite du sheet (toujours visible au-dessus du clavier)
 - Réorganisation via les boutons **▲ ▼**
 
 ### 8. Sessions collaboratives (`🔗 Partager`)
 
-Partage en temps réel via WebSocket — serveur Node.js sur Fly.io (`wss://ssbbb-server.fly.dev`, Paris).
+Partage en temps réel via WebSocket — serveur Node.js sur Render (`wss://setlist-21hb.onrender.com`).
 
 **Flux :**
 1. `🔗 Partager` → saisir son nom → `🌐 Mettre en ligne` → génère un `sessionId` (8 chars)
@@ -186,7 +208,7 @@ Partage en temps réel via WebSocket — serveur Node.js sur Fly.io (`wss://ssbb
 3. Le lien est envoyé aux membres → connexion automatique à l'ouverture
 4. Chaque modification est broadcastée via `wsPatch()` → `wsApplyState()` chez les autres
 
-**Bouton `+ Nouvelle session`** : crée une setlist vide en mode offline, déconnecte la session active.
+**Bouton `+ Nouveau`** (coin haut-droit header) : crée une setlist vide en mode offline, déconnecte la session active.
 
 **Protocole WebSocket :**
 
@@ -202,6 +224,18 @@ Partage en temps réel via WebSocket — serveur Node.js sur Fly.io (`wss://ssbb
 **Indicateur de statut :** rond dans la toolbar — gris (offline), orange (connexion), vert (connecté).
 
 **Reconnexion automatique** toutes les 5s si la connexion tombe.
+
+**U9 :** boutons `📋 Texte` et `📌 Sauvegarde` grisés quand une session est active (source de vérité = serveur).
+
+**U14 :** TTL restant de la session affiché dans l'overlay de partage.
+
+### 9. Champs privés par titre
+
+Deux champs optionnels dans la structure `Song`, accessibles via le sheet (bouton ✎ desktop ou tap mobile) :
+- `privateUrl` : lien (YouTube, etc.) — icône 🔗 discret dans la liste si renseigné
+- `privateNote` : note longue (accord de départ, arrangement…)
+
+Ces champs sont **exclus** du PDF et du format texte d'échange. Synchronisés via WebSocket comme le reste de l'état.
 
 ---
 
@@ -231,12 +265,34 @@ Partage en temps réel via WebSocket — serveur Node.js sur Fly.io (`wss://ssbb
 | `wsPatch()` | Émet l'état courant vers le serveur |
 | `wsApplyState(state)` | Applique un état reçu sans ré-émettre |
 | `wsPeerName()` | Retourne le nom saisi dans l'overlay de partage |
+| `wsUpdateTtl()` | Affiche le TTL restant de la session |
 
 ---
 
 ## Backlog — À faire
 
-Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / 🟢 mineur.
+Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / 🟢 mineur / 🔧 infra.
+
+### Backlog à trier dans les catégories plus bas:
+
+- donner la liste des gens connectés sur la sessions, 
+- Augmenter le TTL à une semaine.
+- Gérer les sessions (possibilité de les supprimer,)
+- Donner des noms aux sessions
+ Changer la couleur des infos pour les sessions (peu visible)
+
+---
+
+### 🔧 Infra
+
+#### ~~I1 — Tester le nouveau serveur Render~~ ✅
+**Validé :** connexion WebSocket, partage de session, reconnexion automatique — tout fonctionne sur Render.
+**Contexte :** migration de Fly.io vers Render (`wss://setlist-21hb.onrender.com`) effectuée. UptimeRobot configuré.  
+**À faire :** valider la connexion WebSocket, le partage de session entre deux clients, la reconnexion automatique, et l'absence de cold start avec UptimeRobot actif.
+
+#### I2 — Déployer index.html sur Infomaniak
+**Contexte :** `index.html` est encore servi localement / depuis GitHub Pages.  
+**À faire :** déposer `index.html` dans le dossier web de `jesuran.be` via FTP ou gestionnaire de fichiers Infomaniak. Vérifier que `ALLOWED_ORIGINS` dans `server.js` inclut bien `https://jesuran.be` et `https://www.jesuran.be`.
 
 ---
 
@@ -262,14 +318,26 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 
 ### 🟡 UX
 
-#### U15 — Fenêtre Options d'impression
-**Problème :** les options PDF (timing, artiste, notes scène) sont éparpillées ou absentes. Le checkbox "Timing" dans la toolbar est encombrant et peu visible.  
-**Solution :** ajouter un troisième bouton dans `.header-controls` (⚙ ou 🖨) qui ouvre un overlay "Options d'impression" avec trois cases à cocher :
-- ☑ Afficher le timing (durées)
-- ☑ Afficher le nom de l'artiste
-- ☑ Afficher les notes scène (`comment`)
+#### U11 — Bottom sheet : ne suit pas le thème actif
+**Problème :** le `.sheet` a son fond et ses inputs avec des valeurs hardcodées. En thèmes `sepia` et `light-paper`, la fenêtre reste sombre, texte illisible.  
+**Fix :** remplacer les valeurs hardcodées par des variables CSS thémées (`var(--card)`, `var(--black)`, `var(--white)`, `var(--border)`, `var(--muted)`, `var(--gold)`).
 
-Ces options remplacent le checkbox "Timing" actuellement dans la toolbar (à supprimer). Elles sont lues par `buildPdfHtml()` au moment de la génération. Persistées en localStorage.
+#### ~~U12 — Bottom sheet mobile : bouton "Fermer" inaccessible avec le clavier ouvert~~ ✅
+**Problème :** sur mobile, le clavier virtuel réduit la hauteur visible et pousse le bouton "Fermer" hors de l'écran.  
+**Implémenté :** bouton ✕ en haut à droite du sheet, toujours visible au-dessus du clavier virtuel.
+
+#### U15 — Menu d'options d'impression
+**Problème :** la checkbox "Timing" dans la toolbar est le seul contrôle d'impression — trop limité et mal placé dans la toolbar.  
+**Fix :** remplacer la checkbox par un bouton "Options PDF" ouvrant un panneau ou dropdown avec :
+- [ ] Afficher le timing
+- [ ] Afficher les notes de scène (comment)
+- [ ] Afficher le nom de l'artiste
+
+Supprimer la checkbox "Timing" de la toolbar.
+
+#### U16 — Masquer le bouton sauvegarde en session active
+**Problème :** le bouton `📌 Sauvegarde` est déjà grisé (U9) mais reste visible, ce qui est trompeur — la source de vérité est le serveur.  
+**Fix :** masquer complètement le bouton (`display:none`) quand `ws.readyState === WebSocket.OPEN`, le réafficher à la déconnexion.
 
 ---
 
@@ -292,112 +360,62 @@ Le slug `ssbbb_{b1}_{b2}_{mode}.pdf` dépend des badges. Pourrait inclure le nom
 | Éditer titre / champs privés | Bouton ✎ (desktop) ou tap sur le titre (mobile) → sheet |
 | Supprimer badge | Hover sur le badge → `×` apparaît |
 | Sauvegarde rapide | Clic sur `📌` ou attendre 15s après une modif |
-| Basculer thème | Bouton `☀ / 📜 / 🌙` dans la toolbar |
-| Nouvelle session offline | Bouton `+` dans la toolbar |
+| Basculer thème | Bouton `☀ / 📜 / 🌙` (coin haut-droit header) |
+| Nouvelle setlist offline | Bouton `+` (coin haut-droit header) |
 | Partager / mettre en ligne | Bouton `🔗` → saisir son nom → `🌐 Mettre en ligne` |
 | Rejoindre une session | Ouvrir le lien `?s=abc12345` |
 | Ouvrir un lien privé | Clic sur l'icône `🔗` à droite du titre |
-| Fermer un overlay | Clic sur le fond sombre ou bouton Fermer |
+| Fermer un overlay | Clic sur le fond sombre ou bouton ✕ |
 
 ---
 
 ## Historique — Déjà réalisé
 
+### 🔧 Infra
+
+#### ~~I0 — Migration Fly.io → Render~~ ✅
+Fly.io abandonné (fin période d'essai gratuite). Serveur redéployé sur Render (tier gratuit).  
+URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/healthz` toutes les 5 min).  
+`server.js` adapté : HTTP + WebSocket sur le même port via `httpServer` partagé (exigence Render).  
+`ALLOWED_ORIGINS` mis à jour pour inclure `jesuran.be`.
+
 ### 🔴 Bugs corrigés
 
-#### ~~B1 — Import : lignes vides parasites en début/fin~~ ✅
-Dans `parseImport()`, un séparateur n'est créé que si au moins un titre a déjà été parsé (`hasItem`). Les séparateurs en fin de liste importée sont purgés automatiquement.
-
-#### ~~B2 — `saveHtml()` : regex fragile sur `outerHTML`~~ ✅ *(non pertinent)*
-Résolu par suppression : `saveHtml()` retiré (U5). Persistance via localStorage uniquement.
-
-#### ~~B3 — `subtitle-input` fantôme~~ ✅
-Règle CSS `.subtitle-input` supprimée (élément absent du HTML).
-
-#### ~~B4 — Balises `<meta>` hors `<head>`~~ ✅
-Les 4 balises `<meta>` déplacées à l'intérieur du `<head>`, après `<html lang="fr">`.
-
-#### ~~B5 — Bloc vide résidu~~ ✅
-Ligne `if(item.type==='song') {}` supprimée dans `buildPdfHtml`.
-
-#### ~~B6 — Toolbar invisible en thème clair~~ ✅
-`.toolbar` utilise désormais `background:var(--card)`.
-
-#### ~~B7 — Overlay Texte illisible en thème clair~~ ✅
-`.import-box` → `var(--card)` / `var(--border)` ; `.import-ta` → `var(--black)` / `var(--white)` / `var(--border)`.
-
-#### ~~B9 — Modifications de badges non propagées immédiatement via WS~~ ✅
-`wsPatch()` appelé à la fin de `renderBadges()`.
-
----
+#### ~~B1~~ ✅ Import : lignes vides parasites en début/fin
+#### ~~B2~~ ✅ `saveHtml()` regex fragile *(non pertinent — U5)*
+#### ~~B3~~ ✅ `.subtitle-input` fantôme — règle CSS supprimée
+#### ~~B4~~ ✅ Balises `<meta>` hors `<head>` — déplacées dans `<head>`
+#### ~~B5~~ ✅ Bloc vide résidu dans `buildPdfHtml` — supprimé
+#### ~~B6~~ ✅ Toolbar invisible en thème clair — `background:var(--card)`
+#### ~~B7~~ ✅ Overlay Texte illisible en thème clair — variables CSS thémées
+#### ~~B9~~ ✅ Badges non propagés via WS — `wsPatch()` appelé dans `renderBadges()`
 
 ### 🟠 Robustesse — Réalisé
 
-#### ~~R1 — Thème non persisté~~ ✅ *(sans objet)*
-Comportement accepté : le thème par défaut `dark-gold` est le bon pour une utilisation scène.
-
-#### ~~R4 — PDF trop lourd (~14 Mo/page)~~ ✅
-Scale différencié : `1.5` pour dark, `2` pour light/sépia. Mode light en JPEG qualité 1.0.
-
-#### ~~R5 — Pas de protection anti-bot sur le serveur WS~~ ✅
-Origin check + rate limiting (max 10 connexions/min/IP) + taille des messages limitée à 128 Ko.
-
----
+#### ~~R1~~ ✅ Thème non persisté *(sans objet — comportement accepté)*
+#### ~~R4~~ ✅ PDF trop lourd — scale différencié 1.5/2, JPEG pour light
+#### ~~R5~~ ✅ Pas de protection anti-bot — origin check + rate limiting + taille messages 128 Ko
 
 ### 🟡 UX — Réalisé
 
-#### ~~U1 — Drag & drop mobile non fonctionnel~~ ✅
-Boutons **▲ ▼** dans `makeSong()`, visibles uniquement sur mobile via media query.
-
-#### ~~U2 — Suppression sans confirmation ni annulation~~ ✅
-Toast avec bouton **Annuler** (4 secondes) après chaque suppression.
-
-#### ~~U3 — Import : pas d'option "remplacer"~~ ✅
-Voir U7.
-
-#### ~~U4 — Bottom sheet mobile : édition limitée au titre seul~~ ✅
-4 champs dans le sheet : Titre, Artiste, Durée, Note scène.
-
-#### ~~U5 — Suppression du bouton "Sauvegarder HTML"~~ ✅
-Bouton et fonction `saveHtml()` supprimés. Persistance via localStorage.
-
-#### ~~U6 — Thème : remplacer le panneau par un toggle Dark/Light~~ ✅
-3 thèmes en cycle, un seul bouton PDF, mode PDF déterminé par le thème actif.
-
-#### ~~U7 — Fusion Import / Export en un seul overlay~~ ✅
-Bouton unique `📋 Texte` avec `⎘ Copier` et `↺ Appliquer`.
-
-#### ~~U8 — Partage de session collaborative via lien~~ ✅
-Bouton `🔗 Partager` + bouton `+ Nouvelle session`. Serveur WebSocket sur Fly.io (`wss://ssbbb-server.fly.dev`), Paris. Sessions 8 chars, TTL 8h, max 100 sessions / 20 peers. Reconnexion auto toutes les 5s. URL `?s=abc12345` pour rejoindre directement.
-
-#### ~~U9 — Griser Texte + Sauvegarde quand session WS active~~ ✅
-`wsUpdateShareUI()` grise les deux boutons (`opacity:.4; pointer-events:none`) quand connecté, les réactive à la déconnexion. Tooltip mis à jour pour expliquer pourquoi.
-
-#### ~~U10 — Données génériques au premier lancement~~ ✅
-Setlist vide, nom "Mon Groupe", badges "Mon groupe" / "Date" par défaut.
-
-#### ~~U11 — Bottom sheet : ne suivait pas le thème actif~~ ✅
-`.sheet` → `var(--card)` ; `.sh-inp` → `var(--black)` / `var(--white)` / `var(--border)` ; `.sh-lbl` → `var(--muted)` ; `.sheet-close` → `var(--black)` / `var(--border)` / `var(--grey)`.
-
-#### ~~U12 — Bottom sheet : bouton "Fermer" inaccessible sous le clavier mobile~~ ✅
-Bouton ✕ déplacé en haut à droite du sheet (`.sheet-header` flex row), toujours visible au-dessus du clavier. Bouton "Fermer" bas supprimé.
-
-#### ~~U13 — Boutons thème et nouvelle session dans le header~~ ✅
-Déplacés de la toolbar vers `.header-controls` (position absolute, top-right du header). Style `.hbtn` aligné sur les couleurs or/thème — plus discrets que les `.tbtn` mais bien lisibles. Labels masqués sur mobile, icônes conservées.
-
-#### ~~U14 — TTL de session affiché dans l'overlay de partage~~ ✅
-Ligne `#share-ttl` ajoutée sous `#share-peers`. Fonction `wsUpdateTtl()` calcule le temps restant (8h − temps écoulé depuis `_wsConnectedAt`) et l'affiche au format `Session expire dans Xh MM`. Mis à jour à chaque ouverture de l'overlay.
-
-#### ~~M4 — Lien + note longue privés par titre~~ ✅
-Champs `privateUrl` et `privateNote` ajoutés à la structure `Song`. Accessibles via le sheet. Icône `🔗` discret si `privateUrl` renseigné. Exclus du PDF et du format texte. Synchronisés via WebSocket.
-
----
+#### ~~U1~~ ✅ Drag & drop mobile — boutons ▲ ▼
+#### ~~U2~~ ✅ Suppression sans annulation — toast 4s avec Annuler
+#### ~~U3~~ ✅ Import sans option remplacer — voir U7
+#### ~~U4~~ ✅ Bottom sheet limité au titre — 4 champs puis 6 avec champs privés
+#### ~~U5~~ ✅ Suppression bouton Sauvegarder HTML
+#### ~~U6~~ ✅ Toggle thème 3 états, déplacé dans le header
+#### ~~U7~~ ✅ Fusion Import / Export — bouton `📋 Texte`
+#### ~~U8~~ ✅ Sessions collaboratives via lien — WebSocket, TTL 8h, reconnexion auto
+#### ~~U9~~ ✅ Boutons Texte + Sauvegarde grisés en session active
+#### ~~U10~~ ✅ Données génériques au premier lancement
+#### ~~U13~~ ✅ Thème + Nouveau déplacés dans le coin haut-droit du header
+#### ~~U14~~ ✅ TTL restant affiché dans l'overlay de partage
+#### ~~M4~~ ✅ Champs privés par titre (`privateUrl`, `privateNote`)
 
 ### 🟢 Mineurs — Réalisé
 
-#### ~~M1 — Thème non sauvegardé dans l'export HTML~~ ✅ *(sans objet)*
-Sans objet depuis la suppression de `saveHtml()` (U5).
+#### ~~M1~~ ✅ Thème non sauvegardé dans l'export HTML *(sans objet — U5)*
 
 ---
 
-*Documentation mise à jour le 19 mai 2026.*
+*Documentation mise à jour le 21 mai 2026.*
