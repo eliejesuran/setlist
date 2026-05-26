@@ -150,9 +150,9 @@ function subBefore(idx){let sum=0; for(let i=idx-1;i>=0;i--){if(items[i].type===
 function refreshSubs(){items.forEach((item,idx)=>{if(item.type!=='sep')return; const el=document.querySelector(`[data-sub="${item.id}"]`); if(el)el.textContent=fmtDur(subBefore(idx))})}
 function renderBadges(skipPatch){const row=$('badge-row'); row.innerHTML=''; headerBadges.forEach(b=>{const d=document.createElement('div'); d.className='hbadge'; const inp=document.createElement('input'); inp.className='badge-ef'; inp.value=b.label; inp.style.minWidth=Math.max(50,b.label.length*8)+'px'; inp.oninput=()=>{const live=headerBadges.find(x=>x.id===b.id); if(live){live.label=inp.value;} inp.style.minWidth=Math.max(50,inp.value.length*8)+'px'; syncFooter(); wsPatch();}; d.appendChild(inp); const del=document.createElement('button'); del.className='badge-del'; del.type='button'; del.innerHTML='×'; del.onclick=()=>{headerBadges=headerBadges.filter(x=>x.id!==b.id); renderBadges()}; d.appendChild(del); row.appendChild(d)}); const add=document.createElement('button'); add.type='button'; add.className='btn-add-badge'; add.textContent='+ badge'; add.onclick=()=>{headerBadges.push({id:'hb'+nextBadgeId++,label:'Nouveau'}); renderBadges(); const ins=row.querySelectorAll('.badge-ef'); if(ins.length){ins[ins.length-1].focus();ins[ins.length-1].select()}}; row.appendChild(add); syncFooter(); if(!skipPatch) wsPatch();}
 function renderList(){const body=$('list-body'); body.innerHTML=''; let num=0; items.forEach((item,idx)=>{if(item.type==='sep') body.appendChild(makeSep(item,idx)); else {num++; body.appendChild(makeSong(item,num));}}); updateTotals()}
-function makeSong(song,num){const row=document.createElement('div'); row.className='row-song'; row.dataset.id=song.id; row.draggable=true; const cn=document.createElement('div'); cn.className='c-num'; cn.textContent=num; row.appendChild(cn); const cm=document.createElement('div'); cm.className='c-main'; const ti=document.createElement('input'); ti.type='text'; ti.className='inp-title'; ti.value=song.title; ti.placeholder='Titre…'; ti.oninput=()=>song.title=ti.value; ti.onclick=e=>{if(mob()){e.preventDefault(); openSheet(song)}}; cm.appendChild(ti); const ar=document.createElement('input'); ar.type='text'; ar.className='inp-artist'; ar.value=song.artist; ar.placeholder='Artiste…'; ar.oninput=()=>song.artist=ar.value; cm.appendChild(ar); const co=document.createElement('input'); co.type='text'; co.className='inp-comment'; co.value=song.comment; co.placeholder='Note scène…'; co.oninput=()=>song.comment=co.value; cm.appendChild(co); row.appendChild(cm);
+function makeSong(song,num){const row=document.createElement('div'); row.className='row-song'; row.dataset.id=song.id; row.draggable=true; const cn=document.createElement('div'); cn.className='c-num'; cn.textContent=num; row.appendChild(cn); const cm=document.createElement('div'); cm.className='c-main'; const ti=document.createElement('input'); ti.type='text'; ti.className='inp-title'; ti.value=song.title; ti.placeholder='Titre…'; ti.oninput=()=>{song.title=ti.value; wsPatch()}; ti.onclick=e=>{if(mob()){e.preventDefault(); openSheet(song)}}; cm.appendChild(ti); const ar=document.createElement('input'); ar.type='text'; ar.className='inp-artist'; ar.value=song.artist; ar.placeholder='Artiste…'; ar.oninput=()=>{song.artist=ar.value; wsPatch()}; cm.appendChild(ar); const co=document.createElement('input'); co.type='text'; co.className='inp-comment'; co.value=song.comment; co.placeholder='Note scène…'; co.oninput=()=>{song.comment=co.value; wsPatch()}; cm.appendChild(co); row.appendChild(cm);
  // Icône lien privé (visible si privateUrl renseigné)
- if(song.privateUrl){const li=document.createElement('a'); li.className='song-link-icon'; li.href=song.privateUrl; li.target='_blank'; li.rel='noopener'; li.title=song.privateUrl; li.textContent='🔗'; row.appendChild(li);} const cd=document.createElement('div'); cd.className='c-dur'; const di=document.createElement('input'); di.type='text'; di.className='inp-dur'; di.value=song.duration; di.placeholder='0:00'; di.oninput=()=>{song.duration=di.value; updateTotals(); refreshSubs()}; di.onblur=()=>{const s=parseDur(di.value); di.value=fmtDur(s); song.duration=di.value; updateTotals(); refreshSubs()}; cd.appendChild(di); row.appendChild(cd); const cdel=document.createElement('div'); cdel.className='c-del'; const db=document.createElement('button'); db.type='button'; db.className='btn-del'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===song.id); const label=song.title||'Sans titre'; items=items.filter(i=>i.id!==song.id); renderList(); showToast(`"${label}" supprimé`,()=>{items.splice(idx,0,song)})}; cdel.appendChild(db); row.appendChild(cdel); // Mobile move buttons ↑ ↓
+ if(song.privateUrl){const li=document.createElement('a'); li.className='song-link-icon'; li.href=song.privateUrl; li.target='_blank'; li.rel='noopener'; li.title=song.privateUrl; li.textContent='🔗'; row.appendChild(li);} const cd=document.createElement('div'); cd.className='c-dur'; const di=document.createElement('input'); di.type='text'; di.className='inp-dur'; di.value=song.duration; di.placeholder='0:00'; di.oninput=()=>{song.duration=di.value; updateTotals(); refreshSubs(); wsPatch()}; di.onblur=()=>{const s=parseDur(di.value); di.value=fmtDur(s); song.duration=di.value; updateTotals(); refreshSubs(); wsPatch()}; cd.appendChild(di); row.appendChild(cd); const cdel=document.createElement('div'); cdel.className='c-del'; const db=document.createElement('button'); db.type='button'; db.className='btn-del'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===song.id); const label=song.title||'Sans titre'; items=items.filter(i=>i.id!==song.id); renderList(); showToast(`"${label}" supprimé`,()=>{items.splice(idx,0,song)})}; cdel.appendChild(db); row.appendChild(cdel); // Mobile move buttons ↑ ↓
  const cma=document.createElement('div'); cma.className='mob-arrows';
  const bup=document.createElement('button'); bup.type='button'; bup.className='btn-mv'; bup.innerHTML='▲'; bup.title='Monter';
  const bdn=document.createElement('button'); bdn.type='button'; bdn.className='btn-mv'; bdn.innerHTML='▼'; bdn.title='Descendre';
@@ -175,7 +175,7 @@ function showToast(msg, undoFn){
   undoBtn.onclick=()=>{undoFn(); dismiss(); renderList()};
   _toastTimer=setTimeout(dismiss, 4000);
 }
-function makeSep(sep,idx){const row=document.createElement('div'); row.className='row-sep'; const ll=document.createElement('div'); ll.className='sep-line-l'; row.appendChild(ll); const badge=document.createElement('div'); badge.className='sep-badge'; const li=document.createElement('input'); li.className='inp-sep'; li.value=sep.label; li.placeholder='Séparateur…'; li.style.width=Math.max(60,sep.label.length*9)+'px'; li.oninput=()=>{sep.label=li.value; li.style.width=Math.max(60,li.value.length*9)+'px'}; badge.appendChild(li); const sub=document.createElement('span'); sub.className='sep-sub'; sub.dataset.sub=sep.id; sub.textContent=fmtDur(subBefore(idx)); badge.appendChild(sub); const db=document.createElement('button'); db.type='button'; db.className='btn-del-sep'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===sep.id); items=items.filter(i=>i.id!==sep.id); renderList(); showToast(`Séparateur "${sep.label}" supprimé`,()=>{items.splice(idx,0,sep)})}; badge.appendChild(db); row.appendChild(badge); const lr=document.createElement('div'); lr.className='sep-line-r'; row.appendChild(lr); return row}
+function makeSep(sep,idx){const row=document.createElement('div'); row.className='row-sep'; const ll=document.createElement('div'); ll.className='sep-line-l'; row.appendChild(ll); const badge=document.createElement('div'); badge.className='sep-badge'; const li=document.createElement('input'); li.className='inp-sep'; li.value=sep.label; li.placeholder='Séparateur…'; li.style.width=Math.max(60,sep.label.length*9)+'px'; li.oninput=()=>{sep.label=li.value; li.style.width=Math.max(60,li.value.length*9)+'px'; wsPatch()}; badge.appendChild(li); const sub=document.createElement('span'); sub.className='sep-sub'; sub.dataset.sub=sep.id; sub.textContent=fmtDur(subBefore(idx)); badge.appendChild(sub); const db=document.createElement('button'); db.type='button'; db.className='btn-del-sep'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===sep.id); items=items.filter(i=>i.id!==sep.id); renderList(); showToast(`Séparateur "${sep.label}" supprimé`,()=>{items.splice(idx,0,sep)})}; badge.appendChild(db); row.appendChild(badge); const lr=document.createElement('div'); lr.className='sep-line-r'; row.appendChild(lr); return row}
 function addSong(d={}){items.push({type:'song',id:'s'+nextId++,title:d.title||'',artist:d.artist||'',duration:d.duration||'0:00',comment:d.comment||'',privateUrl:d.privateUrl||'',privateNote:d.privateNote||''}); renderList()}
 function addSep(lbl=''){items.push({type:'sep',id:'sep'+nextId++,label:lbl||'— Pause —'}); renderList()}
 function openSheet(song){
@@ -186,13 +186,13 @@ function openSheet(song){
   $('sh-comment').value=song.comment||'';
   $('sh-private-url').value=song.privateUrl||'';
   $('sh-private-note').value=song.privateNote||'';
-  $('sh-title').oninput=()=>{song.title=$('sh-title').value; $('sh-name').textContent=song.title||'—'};
-  $('sh-artist').oninput=()=>{song.artist=$('sh-artist').value};
-  $('sh-dur').oninput=()=>{song.duration=$('sh-dur').value};
-  $('sh-dur').onblur=()=>{const s=parseDur($('sh-dur').value); $('sh-dur').value=fmtDur(s); song.duration=$('sh-dur').value};
-  $('sh-comment').oninput=()=>{song.comment=$('sh-comment').value};
-  $('sh-private-url').oninput=()=>{song.privateUrl=$('sh-private-url').value};
-  $('sh-private-note').oninput=()=>{song.privateNote=$('sh-private-note').value};
+  $('sh-title').oninput=()=>{song.title=$('sh-title').value; $('sh-name').textContent=song.title||'—'; wsPatch()};
+  $('sh-artist').oninput=()=>{song.artist=$('sh-artist').value; wsPatch()};
+  $('sh-dur').oninput=()=>{song.duration=$('sh-dur').value; wsPatch()};
+  $('sh-dur').onblur=()=>{const s=parseDur($('sh-dur').value); $('sh-dur').value=fmtDur(s); song.duration=$('sh-dur').value; wsPatch()};
+  $('sh-comment').oninput=()=>{song.comment=$('sh-comment').value; wsPatch()};
+  $('sh-private-url').oninput=()=>{song.privateUrl=$('sh-private-url').value; wsPatch()};
+  $('sh-private-note').oninput=()=>{song.privateNote=$('sh-private-note').value; wsPatch()};
   $('sheet-ov').classList.add('open');
   setTimeout(()=>$('sh-title').focus(),100);
 }
@@ -613,7 +613,14 @@ function wsGetState(){
 function wsApplyState(state){
   if(!state) return;
   wsSuppressPatch = true;
-  if(state.items)        items        = state.items;
+  if(state.items){
+    items = state.items;
+    // Resync nextId pour éviter les collisions d'ID après réception
+    items.forEach(item=>{
+      const n=parseInt((item.id||'').replace(/\D/g,''));
+      if(n>=nextId) nextId=n+1;
+    });
+  }
   if(state.headerBadges) headerBadges = state.headerBadges;
   if(state.bandName)     $('band-name').value    = state.bandName;
   if(state.footerVenue)  $('footer-venue').value = state.footerVenue;
@@ -631,7 +638,7 @@ function wsPatch(){
 
 // U14 : affiche le TTL restant de la session dans l'overlay de partage
 let _wsConnectedAt = null;
-const WS_SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8h, même valeur que le serveur
+const WS_SESSION_TTL_MS = 24 * 15 * 60 * 60 * 1000; // 15 jours, même valeur que le serveur
 function wsUpdateTtl(){
   const el = $('share-ttl');
   if(!el) return;
