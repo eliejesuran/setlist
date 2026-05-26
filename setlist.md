@@ -275,11 +275,7 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 
 ### Backlog à trier dans les catégories plus bas:
 
-- UX donner la liste des gens connectés sur la sessions, 
-- UX(?) Augmenter le TTL à une semaine.
-- UX Gérer les sessions (possibilité de les supprimer,)
-- UX Donner des noms aux sessions
-- M Changer la couleur des infos pour les sessions (peu visible)
+- []
 
 ---
 
@@ -313,22 +309,12 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 
 ### 🟡 UX
 
-#### U11 — Bottom sheet : ne suit pas le thème actif
-**Problème :** le `.sheet` a son fond et ses inputs avec des valeurs hardcodées. En thèmes `sepia` et `light-paper`, la fenêtre reste sombre, texte illisible.  
-**Fix :** remplacer les valeurs hardcodées par des variables CSS thémées (`var(--card)`, `var(--black)`, `var(--white)`, `var(--border)`, `var(--muted)`, `var(--gold)`).
+#### ~~U11~~ WARNING Bottom sheet : ne suit pas le thème actif WARNING - toujours le soucis
 
-#### U15 — Menu d'options d'impression
-**Problème :** la checkbox "Timing" dans la toolbar est le seul contrôle d'impression — trop limité et mal placé dans la toolbar.  
-**Fix :** remplacer la checkbox par un bouton "Options PDF" ouvrant un panneau ou dropdown avec :
-- [ ] Afficher le timing
-- [ ] Afficher les notes de scène (comment)
-- [ ] Afficher le nom de l'artiste
-
-Supprimer la checkbox "Timing" de la toolbar.
-
-#### U16 — Masquer le bouton sauvegarde en session active
-**Problème :** le bouton `📌 Sauvegarde` est déjà grisé (U9) mais reste visible, ce qui est trompeur — la source de vérité est le serveur.  
-**Fix :** masquer complètement le bouton (`display:none`) quand `ws.readyState === WebSocket.OPEN`, le réafficher à la déconnexion.
+#### UX 17 donner la liste des gens connectés sur la sessions, 
+#### UX 18 Gérer les sessions (possibilité de les supprimer, voir si y'en a pas trop)
+#### UX 19 Donner des noms aux sessions, avec la possibilité de se connecter sur la bonne session.
+#### UX 20 Changer la couleur des infos pour les sessions (peu visible)
 
 ---
 
@@ -404,6 +390,9 @@ URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/heal
 #### ~~U12~~ ✅ Bottom sheet mobile : bouton "Fermer" inaccessible avec le clavier ouvert
 #### ~~U13~~ ✅ Thème + Nouveau déplacés dans le coin haut-droit du header
 #### ~~U14~~ ✅ TTL restant affiché dans l'overlay de partage
+#### ~~U15~~ ✅ Menu d'options d'impression
+#### ~~U16~~ ✅ Masquer le bouton sauvegarde en session active
+
 
 ### 🟢 Mineurs — Réalisé
 
