@@ -148,7 +148,7 @@ const fmtDur=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 function updateTotals(){const songs=items.filter(i=>i.type==='song'); const secs=songs.reduce((a,s)=>a+parseDur(s.duration),0); $('total-time').textContent=fmtDur(secs); $('total-count').textContent=songs.length+' titre'+(songs.length!==1?'s':'')}
 function subBefore(idx){let sum=0; for(let i=idx-1;i>=0;i--){if(items[i].type==='sep')break; sum+=parseDur(items[i].duration)} return sum}
 function refreshSubs(){items.forEach((item,idx)=>{if(item.type!=='sep')return; const el=document.querySelector(`[data-sub="${item.id}"]`); if(el)el.textContent=fmtDur(subBefore(idx))})}
-function renderBadges(){const row=$('badge-row'); row.innerHTML=''; headerBadges.forEach(b=>{const d=document.createElement('div'); d.className='hbadge'; const inp=document.createElement('input'); inp.className='badge-ef'; inp.value=b.label; inp.style.minWidth=Math.max(50,b.label.length*8)+'px'; inp.oninput=()=>{b.label=inp.value; inp.style.minWidth=Math.max(50,inp.value.length*8)+'px'; syncFooter();}; d.appendChild(inp); const del=document.createElement('button'); del.className='badge-del'; del.type='button'; del.innerHTML='×'; del.onclick=()=>{headerBadges=headerBadges.filter(x=>x.id!==b.id); renderBadges()}; d.appendChild(del); row.appendChild(d)}); const add=document.createElement('button'); add.type='button'; add.className='btn-add-badge'; add.textContent='+ badge'; add.onclick=()=>{headerBadges.push({id:'hb'+nextBadgeId++,label:'Nouveau'}); renderBadges(); const ins=row.querySelectorAll('.badge-ef'); if(ins.length){ins[ins.length-1].focus();ins[ins.length-1].select()}}; row.appendChild(add); syncFooter(); wsPatch();}
+function renderBadges(skipPatch){const row=$('badge-row'); row.innerHTML=''; headerBadges.forEach(b=>{const d=document.createElement('div'); d.className='hbadge'; const inp=document.createElement('input'); inp.className='badge-ef'; inp.value=b.label; inp.style.minWidth=Math.max(50,b.label.length*8)+'px'; inp.oninput=()=>{const live=headerBadges.find(x=>x.id===b.id); if(live){live.label=inp.value;} inp.style.minWidth=Math.max(50,inp.value.length*8)+'px'; syncFooter(); wsPatch();}; d.appendChild(inp); const del=document.createElement('button'); del.className='badge-del'; del.type='button'; del.innerHTML='×'; del.onclick=()=>{headerBadges=headerBadges.filter(x=>x.id!==b.id); renderBadges()}; d.appendChild(del); row.appendChild(d)}); const add=document.createElement('button'); add.type='button'; add.className='btn-add-badge'; add.textContent='+ badge'; add.onclick=()=>{headerBadges.push({id:'hb'+nextBadgeId++,label:'Nouveau'}); renderBadges(); const ins=row.querySelectorAll('.badge-ef'); if(ins.length){ins[ins.length-1].focus();ins[ins.length-1].select()}}; row.appendChild(add); syncFooter(); if(!skipPatch) wsPatch();}
 function renderList(){const body=$('list-body'); body.innerHTML=''; let num=0; items.forEach((item,idx)=>{if(item.type==='sep') body.appendChild(makeSep(item,idx)); else {num++; body.appendChild(makeSong(item,num));}}); updateTotals()}
 function makeSong(song,num){const row=document.createElement('div'); row.className='row-song'; row.dataset.id=song.id; row.draggable=true; const cn=document.createElement('div'); cn.className='c-num'; cn.textContent=num; row.appendChild(cn); const cm=document.createElement('div'); cm.className='c-main'; const ti=document.createElement('input'); ti.type='text'; ti.className='inp-title'; ti.value=song.title; ti.placeholder='Titre…'; ti.oninput=()=>song.title=ti.value; ti.onclick=e=>{if(mob()){e.preventDefault(); openSheet(song)}}; cm.appendChild(ti); const ar=document.createElement('input'); ar.type='text'; ar.className='inp-artist'; ar.value=song.artist; ar.placeholder='Artiste…'; ar.oninput=()=>song.artist=ar.value; cm.appendChild(ar); const co=document.createElement('input'); co.type='text'; co.className='inp-comment'; co.value=song.comment; co.placeholder='Note scène…'; co.oninput=()=>song.comment=co.value; cm.appendChild(co); row.appendChild(cm);
  // Icône lien privé (visible si privateUrl renseigné)
@@ -554,19 +554,12 @@ function updateSaveStatus(msg){
   if(lbl){ lbl.textContent = msg; setTimeout(()=>{ lbl.textContent='Sauvegarde auto'; }, 25000); }
 }
 
-// Auto-save on every meaningful change (debounced 1.5s)
+// Auto-save on every meaningful change (debounced 15s)
 let lsTimer = null;
 function scheduleAutoSave(){
   clearTimeout(lsTimer);
   lsTimer = setTimeout(lsSave, 15000);
 }
-
-// Patch existing renderList to trigger auto-save
-const _origRenderList = renderList;
-renderList = function(...args){
-  _origRenderList(...args);
-  scheduleAutoSave();
-};
 
 document.getElementById('btn-localsave').addEventListener('click', lsSave);
 $('band-name').addEventListener('input', scheduleAutoSave);
@@ -624,7 +617,7 @@ function wsApplyState(state){
   if(state.headerBadges) headerBadges = state.headerBadges;
   if(state.bandName)     $('band-name').value    = state.bandName;
   if(state.footerVenue)  $('footer-venue').value = state.footerVenue;
-  renderBadges();
+  renderBadges(true);
   renderList();
   syncFooter();
   wsSuppressPatch = false;
@@ -829,10 +822,11 @@ $('btn-copy-share').addEventListener('click', async ()=>{
   }
 })();
 
-// Patch WS à chaque modification — on surcharge renderList une 2e fois
-const _origRenderListWS = renderList;
+// Surcharge unique : autosave + patch WS
+const _origRenderList = renderList;
 renderList = function(...args){
-  _origRenderListWS(...args);
+  _origRenderList(...args);
+  scheduleAutoSave();
   wsPatch();
 };
 $('band-name').addEventListener('input', wsPatch);
