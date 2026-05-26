@@ -218,7 +218,7 @@ Partage en temps réel via WebSocket — serveur Node.js sur Render (`wss://setl
 | `init` | serveur | État envoyé au nouveau pair à la connexion |
 | `joined` | serveur | Confirmation si la session est vide |
 | `peer_joined` / `peer_left` | serveur | Notification d'arrivée/départ |
-| `session_expired` | serveur | Session expirée (TTL 8h) |
+| `session_expired` | serveur | Session expirée (TTL 15j) |
 | `ping` / `pong` | client/serveur | Keepalive |
 
 **Indicateur de statut :** rond dans la toolbar — gris (offline), orange (connexion), vert (connecté).
@@ -275,20 +275,15 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 
 ### Backlog à trier dans les catégories plus bas:
 
-- donner la liste des gens connectés sur la sessions, 
-- Augmenter le TTL à une semaine.
-- Gérer les sessions (possibilité de les supprimer,)
-- Donner des noms aux sessions
- Changer la couleur des infos pour les sessions (peu visible)
+- UX donner la liste des gens connectés sur la sessions, 
+- UX(?) Augmenter le TTL à une semaine.
+- UX Gérer les sessions (possibilité de les supprimer,)
+- UX Donner des noms aux sessions
+- M Changer la couleur des infos pour les sessions (peu visible)
 
 ---
 
 ### 🔧 Infra
-
-#### ~~I1 — Tester le nouveau serveur Render~~ ✅
-**Validé :** connexion WebSocket, partage de session, reconnexion automatique — tout fonctionne sur Render.
-**Contexte :** migration de Fly.io vers Render (`wss://setlist-21hb.onrender.com`) effectuée. UptimeRobot configuré.  
-**À faire :** valider la connexion WebSocket, le partage de session entre deux clients, la reconnexion automatique, et l'absence de cold start avec UptimeRobot actif.
 
 #### I2 — Déployer index.html sur Infomaniak
 **Contexte :** `index.html` est encore servi localement / depuis GitHub Pages.  
@@ -321,10 +316,6 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 #### U11 — Bottom sheet : ne suit pas le thème actif
 **Problème :** le `.sheet` a son fond et ses inputs avec des valeurs hardcodées. En thèmes `sepia` et `light-paper`, la fenêtre reste sombre, texte illisible.  
 **Fix :** remplacer les valeurs hardcodées par des variables CSS thémées (`var(--card)`, `var(--black)`, `var(--white)`, `var(--border)`, `var(--muted)`, `var(--gold)`).
-
-#### ~~U12 — Bottom sheet mobile : bouton "Fermer" inaccessible avec le clavier ouvert~~ ✅
-**Problème :** sur mobile, le clavier virtuel réduit la hauteur visible et pousse le bouton "Fermer" hors de l'écran.  
-**Implémenté :** bouton ✕ en haut à droite du sheet, toujours visible au-dessus du clavier virtuel.
 
 #### U15 — Menu d'options d'impression
 **Problème :** la checkbox "Timing" dans la toolbar est le seul contrôle d'impression — trop limité et mal placé dans la toolbar.  
@@ -373,11 +364,13 @@ Le slug `ssbbb_{b1}_{b2}_{mode}.pdf` dépend des badges. Pourrait inclure le nom
 
 ### 🔧 Infra
 
-#### ~~I0 — Migration Fly.io → Render~~ ✅
+#### ~~I0~~ ✅ Migration Fly.io → Render
 Fly.io abandonné (fin période d'essai gratuite). Serveur redéployé sur Render (tier gratuit).  
 URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/healthz` toutes les 5 min).  
 `server.js` adapté : HTTP + WebSocket sur le même port via `httpServer` partagé (exigence Render).  
 `ALLOWED_ORIGINS` mis à jour pour inclure `jesuran.be`.
+#### ~~I1~~ ✅ Tester le nouveau serveur Render
+
 
 ### 🔴 Bugs corrigés
 
@@ -408,14 +401,15 @@ URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/heal
 #### ~~U8~~ ✅ Sessions collaboratives via lien — WebSocket, TTL 8h, reconnexion auto
 #### ~~U9~~ ✅ Boutons Texte + Sauvegarde grisés en session active
 #### ~~U10~~ ✅ Données génériques au premier lancement
+#### ~~U12~~ ✅ Bottom sheet mobile : bouton "Fermer" inaccessible avec le clavier ouvert
 #### ~~U13~~ ✅ Thème + Nouveau déplacés dans le coin haut-droit du header
 #### ~~U14~~ ✅ TTL restant affiché dans l'overlay de partage
-#### ~~M4~~ ✅ Champs privés par titre (`privateUrl`, `privateNote`)
 
 ### 🟢 Mineurs — Réalisé
 
 #### ~~M1~~ ✅ Thème non sauvegardé dans l'export HTML *(sans objet — U5)*
+#### ~~M4~~ ✅ Champs privés par titre (`privateUrl`, `privateNote`)
 
 ---
 
-*Documentation mise à jour le 21 mai 2026.*
+*Documentation mise à jour le 26 mai 2026.*

@@ -9,7 +9,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 // ─── Configuration ────────────────────────────────────────────────────────────
 
 const PORT           = process.env.PORT || 3001;
-const SESSION_TTL_MS = 8 * 60 * 60 * 1000;  // 8 heures d'inactivité → expiration
+const SESSION_TTL_MS = 15* 24 * 60 * 60 * 1000;  // 15 jours d'inactivité → expiration
 const MAX_SESSIONS   = 100;
 const MAX_PEERS      = 20;
 
@@ -18,6 +18,8 @@ const ALLOWED_ORIGINS = [
   'https://eliejesuran.github.io',
   'https://jesuran.be',
   'https://www.jesuran.be',
+  'https://eliejesuran.be',
+  'https://www.eliejesuran.be',
   'http://localhost',        // dev local
   'http://127.0.0.1',       // dev local
   'file://',                 // fichier ouvert localement (file://)
