@@ -321,7 +321,8 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 #### UX 20 Changer la couleur des infos pour les sessions (peu visible)
 #### UX 21 Changer la couleur des infosbox en sepia et light mode
 #### UX 22 Changer le message de confirmation dans l'export de texte en information temporaire (infos box)
-#### UX 23 Possibilité dans l'export d'exporter en plus: Le nom du groupe, les options d'impression, le lieu.
+#### UX 23 Possibilité dans l'export d'exporter en plus: Le nom du groupe, les options d'impression, le lieu, les notes préviées, le lien privé.
+#### UX 24 Quand on passe à deux pages, le format n'est pas respecté sur toutes les pages. 
 
 ---
 
