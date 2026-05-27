@@ -293,6 +293,10 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 **Problème :** si un membre modifie la setlist offline puis rejoint une session, `wsApplyState()` écrase ses modifications locales sans avertissement.  
 **Fix :** à la réception d'un `init`, comparer le `savedAt` du localStorage avec le timestamp serveur et proposer un choix ("Garder mes modifs" / "Prendre la version du groupe").
 
+#### B9 Insertion des morceaux et deplacement des morceaux dans des sessions partagées non cohérentes
+
+####
+
 ---
 
 ### 🟠 Robustesse
@@ -315,6 +319,9 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 #### UX 18 Gérer les sessions (possibilité de les supprimer, voir si y'en a pas trop)
 #### UX 19 Donner des noms aux sessions, avec la possibilité de se connecter sur la bonne session.
 #### UX 20 Changer la couleur des infos pour les sessions (peu visible)
+#### UX 21 Changer la couleur des infosbox en sepia et light mode
+#### UX 22 Changer le message de confirmation dans l'export de texte en information temporaire (infos box)
+#### UX 23 Possibilité dans l'export d'exporter en plus: Le nom du groupe, les options d'impression, le lieu.
 
 ---
 
