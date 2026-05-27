@@ -198,16 +198,26 @@ function openSheet(song){
 }
 function closeSheet(){$('sheet-ov').classList.remove('open'); renderList();}
 function exportImportFormat(){
-  const badgesLine = '##BADGES: '+headerBadges.map(b=>b.label).join(' | ');
+  const badgesLine  = '##BADGES: '+headerBadges.map(b=>b.label).join(' | ');
+  const bandLine    = '##BAND: '+($('band-name').value||'');
+  const venueLine   = '##VENUE: '+($('footer-venue').value||'');
+  const printLine   = '##PRINT: timing='+$('pdf-include-timing').checked
+                    +' artist='+$('pdf-include-artist').checked
+                    +' comment='+$('pdf-include-comment').checked;
+
   const songs = items.map(item=>{
     if(item.type==='sep') return '---';
     const parts=[item.title||''];
-    if(item.artist)  parts.push(item.artist);
+    if(item.artist)   parts.push(item.artist);
     if(item.duration) parts.push(item.duration);
-    if(item.comment) parts.push(item.comment);
-    return parts.join(' - ');
+    if(item.comment)  parts.push(item.comment);
+    let line = parts.join(' - ');
+    if(item.privateUrl)  line += ' &privé: '+item.privateUrl;
+    if(item.privateNote) line += ' &note: '+item.privateNote;
+    return line;
   }).join('\n');
-  return badgesLine+'\n'+songs;
+
+  return bandLine+'\n'+venueLine+'\n'+printLine+'\n'+badgesLine+'\n'+songs;
 }
 function buildPdfHtml(mode){
   const isLight=mode==='light';
@@ -226,7 +236,7 @@ function buildPdfHtml(mode){
   const ALT      =isLight?'rgba(0,0,0,.025)':'rgba(255,255,255,.018)';
   const CMT_CLR  =isLight?'#333333':'#f6e7b8';
 
-  const bn  =$('band-name').value||'SSBBB';
+  const bn  =$('band-name').value||'SETLIST';
   const date=(headerBadges[1]||{label:''}).label;
   const venue=$('footer-venue').value;
   const b1  =(headerBadges[0]||{label:''}).label;
@@ -366,11 +376,11 @@ function generatePDF(){return async()=>{
       }
     }
     tgt.innerHTML=''; tgt.style.width='';
-    doc.save('ssbbb_'+slugPDF+'_'+mode+'.pdf');
+    doc.save('setlist_'+slugPDF+'_'+mode+'.pdf');
   }catch(e){console.error(e); alert('Erreur PDF. Essaie depuis Chrome.');}
   finally{ov.classList.remove('active');}
 }}
-function saveHtml(){const esc=s=>String(s).replace(/"/g,'&quot;'); let html=document.documentElement.outerHTML; html=html.replace(/let headerBadges=\[[\s\S]*?\];/,'let headerBadges='+JSON.stringify(headerBadges)+';'); html=html.replace(/let items=\[[\s\S]*?\];/,'let items='+JSON.stringify(items)+';'); html=html.replace(/id="band-name" value="[^"]*"/,`id="band-name" value="${esc($('band-name').value)}"`); html=html.replace(/id="footer-venue" value="[^"]*"/,`id="footer-venue" value="${esc($('footer-venue').value)}"`); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'})); const slugHTML=headerBadges.slice(0,3).map(b=>b.label.replace(/[^a-z0-9]/gi,'_')).join('_'); a.download='ssbbb_'+slugHTML+'_setlist.html'; a.click()}
+function saveHtml(){const esc=s=>String(s).replace(/"/g,'&quot;'); let html=document.documentElement.outerHTML; html=html.replace(/let headerBadges=\[[\s\S]*?\];/,'let headerBadges='+JSON.stringify(headerBadges)+';'); html=html.replace(/let items=\[[\s\S]*?\];/,'let items='+JSON.stringify(items)+';'); html=html.replace(/id="band-name" value="[^"]*"/,`id="band-name" value="${esc($('band-name').value)}"`); html=html.replace(/id="footer-venue" value="[^"]*"/,`id="footer-venue" value="${esc($('footer-venue').value)}"`); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'})); const slugHTML=headerBadges.slice(0,3).map(b=>b.label.replace(/[^a-z0-9]/gi,'_')).join('_'); a.download='setlist_'+slugHTML+'_setlist.html'; a.click()}
 $('btn-add-song').addEventListener('click',()=>addSong());
 $('btn-add-sep').addEventListener('click',()=>addSep());
 $('sh-close').addEventListener('click',closeSheet);
@@ -380,43 +390,66 @@ function parseImport(text){
   const lines = text.split('\n');
   const imported = [];
   let badgesParsed = null;
-  let hasItem = false; // fix B1 : ne crée pas de séparateur avant le 1er item
+  let bandParsed = null, venueParsed = null, printParsed = null;
+  let hasItem = false;
 
   lines.forEach(line=>{
     const raw = line.trim();
 
-    // Ligne badges ##BADGES: Bruxelles | 2 juin 2026
     if(raw.startsWith('##BADGES:')){
       badgesParsed = raw.slice(9).split('|').map(s=>s.trim()).filter(Boolean);
       return;
     }
-
-    if(!raw || raw==='---'){
-      if(hasItem){  // fix B1 : ignorer les vides avant le 1er item
-        imported.push({type:'sep', id:'sep'+nextId++, label:'— Pause —'});
-      }
+    if(raw.startsWith('##BAND:')){
+      bandParsed = raw.slice(7).trim();
+      return;
+    }
+    if(raw.startsWith('##VENUE:')){
+      venueParsed = raw.slice(8).trim();
+      return;
+    }
+    if(raw.startsWith('##PRINT:')){
+      const opts = raw.slice(8).trim();
+      printParsed = {
+        timing:  /timing=true/.test(opts),
+        artist:  /artist=true/.test(opts),
+        comment: /comment=true/.test(opts),
+      };
       return;
     }
 
-    const durMatch = raw.match(/(\d+:\d{2})(?!.*\d+:\d{2})/);
+    if(!raw || raw==='---'){
+      if(hasItem) imported.push({type:'sep', id:'sep'+nextId++, label:'— Pause —'});
+      return;
+    }
+
+    // Extraire champs privés en fin de ligne
+    let core = raw;
+    let privateUrl = '', privateNote = '';
+    const noteIdx = core.indexOf(' &note: ');
+    if(noteIdx !== -1){ privateNote = core.slice(noteIdx+8).trim(); core = core.slice(0,noteIdx).trim(); }
+    const privIdx = core.indexOf(' &privé: ');
+    if(privIdx !== -1){ privateUrl = core.slice(privIdx+9).trim(); core = core.slice(0,privIdx).trim(); }
+
+    const durMatch = core.match(/(\d+:\d{2})(?!.*\d+:\d{2})/);
     const duration = durMatch ? durMatch[1] : '0:00';
     const withoutDur = durMatch
-      ? raw.replace(durMatch[1],'').replace(/\s*-\s*$/,'').trim()
-      : raw;
+      ? core.replace(durMatch[1],'').replace(/\s*-\s*$/,'').trim()
+      : core;
     const parts = withoutDur.split(/\s*-\s*/).map(s=>s.trim()).filter(Boolean);
 
     imported.push({
       type:'song', id:'s'+nextId++,
       title: parts[0]||'', artist: parts[1]||'',
-      duration, comment: parts.slice(2).join(' - ')
+      duration, comment: parts.slice(2).join(' - '),
+      privateUrl, privateNote
     });
     hasItem = true;
   });
 
-  // Supprimer un éventuel séparateur final parasite
   while(imported.length && imported[imported.length-1].type==='sep') imported.pop();
 
-  return {imported, badgesParsed};
+  return {imported, badgesParsed, bandParsed, venueParsed, printParsed};
 }
 
 function doImport(mode){
@@ -445,13 +478,21 @@ $('btn-copy-texte').addEventListener('click',async()=>{
 });
 $('btn-apply-texte').addEventListener('click',()=>{
   if(items.length && !confirm('Remplacer toute la setlist par ce texte ?')) return;
-  const {imported, badgesParsed} = parseImport($('texte-ta').value);
+  const {imported, badgesParsed, bandParsed, venueParsed, printParsed} = parseImport($('texte-ta').value);
   if(badgesParsed){
     headerBadges = badgesParsed.map((label)=>({id:'hb'+(nextBadgeId++), label}));
     renderBadges();
   }
+  if(bandParsed  !== null) $('band-name').value    = bandParsed;
+  if(venueParsed !== null) $('footer-venue').value = venueParsed;
+  if(printParsed !== null){
+    $('pdf-include-timing').checked  = printParsed.timing;
+    $('pdf-include-artist').checked  = printParsed.artist;
+    $('pdf-include-comment').checked = printParsed.comment;
+  }
   items = imported;
   renderList();
+  syncFooter();
   $('texte-ov').classList.remove('open');
 });
 // ══ PDF unique (U6) ══
@@ -468,7 +509,7 @@ $('pdf-opts-panel').addEventListener('click', e=>e.stopPropagation());
 $('band-name').addEventListener('input',syncFooter);
 
 function syncFooter(){
-  const bn=$('band-name').value||'SSBBB';
+  const bn=$('band-name').value||'SETLIST';
   const b1=(headerBadges[0]||{label:''}).label;
   const b2=(headerBadges[1]||{label:''}).label;
   $('band-title').textContent=bn.toUpperCase()+(b1?' \u2022 '+b1.toUpperCase():'');
@@ -612,6 +653,22 @@ function wsGetState(){
 
 function wsApplyState(state){
   if(!state) return;
+  // B8
+  if(!wsSuppressPatch && state.savedAt){
+    const localRaw = localStorage.getItem(LS_KEY);
+    if(localRaw){
+      try{
+        const local = JSON.parse(localRaw);
+        if(local.savedAt && local.savedAt > state.savedAt){
+          if(confirm('Ta version locale est plus récente.\nGarder tes modifications ?')){
+            wsPatch();
+            return;
+          }
+        }
+      }catch{}
+    }
+  }
+  
   wsSuppressPatch = true;
   if(state.items){
     items = state.items;
@@ -684,6 +741,7 @@ function wsConnect(sessionId){
     _wsConnectedAt = Date.now();
     wsIndicator('on');
     wsUpdateShareUI();
+    wsPatch();
     // Mettre à jour l'URL du navigateur sans recharger
     const url = new URL(window.location.href);
     url.searchParams.set('s', sessionId);

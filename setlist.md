@@ -273,29 +273,13 @@ Ces champs sont **exclus** du PDF et du format texte d'échange. Synchronisés v
 
 Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / 🟢 mineur / 🔧 infra.
 
-### Backlog à trier dans les catégories plus bas:
-
-- []
-
 ---
 
 ### 🔧 Infra
 
-#### I2 — Déployer index.html sur Infomaniak
-**Contexte :** `index.html` est encore servi localement / depuis GitHub Pages.  
-**À faire :** déposer `index.html` dans le dossier web de `jesuran.be` via FTP ou gestionnaire de fichiers Infomaniak. Vérifier que `ALLOWED_ORIGINS` dans `server.js` inclut bien `https://jesuran.be` et `https://www.jesuran.be`.
-
 ---
 
 ### 🔴 Bugs
-
-#### B8 — Modifications offline écrasées à la reconnexion
-**Problème :** si un membre modifie la setlist offline puis rejoint une session, `wsApplyState()` écrase ses modifications locales sans avertissement.  
-**Fix :** à la réception d'un `init`, comparer le `savedAt` du localStorage avec le timestamp serveur et proposer un choix ("Garder mes modifs" / "Prendre la version du groupe").
-
-#### B9 Insertion des morceaux et deplacement des morceaux dans des sessions partagées non cohérentes
-
-####
 
 ---
 
@@ -315,14 +299,13 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 
 #### ~~U11~~ WARNING Bottom sheet : ne suit pas le thème actif WARNING - toujours le soucis
 
-#### UX 17 donner la liste des gens connectés sur la sessions, 
-#### UX 18 Gérer les sessions (possibilité de les supprimer, voir si y'en a pas trop)
-#### UX 19 Donner des noms aux sessions, avec la possibilité de se connecter sur la bonne session.
-#### UX 20 Changer la couleur des infos pour les sessions (peu visible)
-#### UX 21 Changer la couleur des infosbox en sepia et light mode
-#### UX 22 Changer le message de confirmation dans l'export de texte en information temporaire (infos box)
-#### UX 23 Possibilité dans l'export d'exporter en plus: Le nom du groupe, les options d'impression, le lieu, les notes préviées, le lien privé.
-#### UX 24 Quand on passe à deux pages, le format n'est pas respecté sur toutes les pages. 
+#### U17 donner la liste des gens connectés sur la sessions, 
+#### U18 Gérer les sessions (possibilité de les supprimer, voir si y'en a pas trop)
+#### U19 Possibilité de se connecter sur la bonne session avec le code/ voir même pouvoir donner un nom à la session
+#### U20 Changer la couleur des infos pour les sessions (peu visible)
+#### U21 Changer la couleur des infosbox en sepia et light mode (c'est le meme que l'U 11)
+#### U22 Changer le message de confirmation dans l'export de texte en information temporaire (infos box)
+#### U24 Quand on passe à deux pages, le format n'est pas respecté sur toutes les pages. 
 
 ---
 
@@ -364,6 +347,7 @@ URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/heal
 `server.js` adapté : HTTP + WebSocket sur le même port via `httpServer` partagé (exigence Render).  
 `ALLOWED_ORIGINS` mis à jour pour inclure `jesuran.be`.
 #### ~~I1~~ ✅ Tester le nouveau serveur Render
+#### ~~I2~~ ✅ Déployer index.html sur Infomaniak
 
 
 ### 🔴 Bugs corrigés
@@ -375,7 +359,9 @@ URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/heal
 #### ~~B5~~ ✅ Bloc vide résidu dans `buildPdfHtml` — supprimé
 #### ~~B6~~ ✅ Toolbar invisible en thème clair — `background:var(--card)`
 #### ~~B7~~ ✅ Overlay Texte illisible en thème clair — variables CSS thémées
+#### ~~B8~~ ⚠️ Modifications offline écrasées à la reconnexion - à tester
 #### ~~B9~~ ✅ Badges non propagés via WS — `wsPatch()` appelé dans `renderBadges()`
+#### ~~B10~~ ⚠️ BadgNecessite toujours la modification de la part de la setlist originale pour populer la setlist de celui qui reçoit le lien
 
 ### 🟠 Robustesse — Réalisé
 
@@ -400,6 +386,7 @@ URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/heal
 #### ~~U14~~ ✅ TTL restant affiché dans l'overlay de partage
 #### ~~U15~~ ✅ Menu d'options d'impression
 #### ~~U16~~ ✅ Masquer le bouton sauvegarde en session active
+#### ~~U23~~ ✅ Possibilité dans l'export d'exporter en plus: Le nom du groupe, les options d'impression, le lieu, les notes préviées, le lien privé.
 
 
 ### 🟢 Mineurs — Réalisé
@@ -409,4 +396,4 @@ URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/heal
 
 ---
 
-*Documentation mise à jour le 26 mai 2026.*
+*Documentation mise à jour le 27 mai 2026.*
