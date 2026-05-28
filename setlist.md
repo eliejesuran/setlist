@@ -297,14 +297,9 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 
 ### 🟡 UX
 
-#### ~~U11~~ WARNING Bottom sheet : ne suit pas le thème actif WARNING - toujours le soucis
-
 #### U17 donner la liste des gens connectés sur la sessions, 
 #### U18 Gérer les sessions (possibilité de les supprimer, voir si y'en a pas trop)
 #### U19 Possibilité de se connecter sur la bonne session avec le code/ voir même pouvoir donner un nom à la session
-#### U20 Changer la couleur des infos pour les sessions (peu visible)
-#### U21 Changer la couleur des infosbox en sepia et light mode (c'est le meme que l'U 11)
-#### U22 Changer le message de confirmation dans l'export de texte en information temporaire (infos box)
 #### U24 Quand on passe à deux pages, le format n'est pas respecté sur toutes les pages. 
 
 ---
@@ -381,11 +376,15 @@ URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/heal
 #### ~~U8~~ ✅ Sessions collaboratives via lien — WebSocket, TTL 8h, reconnexion auto
 #### ~~U9~~ ✅ Boutons Texte + Sauvegarde grisés en session active
 #### ~~U10~~ ✅ Données génériques au premier lancement
+#### ~~U11~~ ✅ Bottom sheet : ne suit pas le thème actif
 #### ~~U12~~ ✅ Bottom sheet mobile : bouton "Fermer" inaccessible avec le clavier ouvert
 #### ~~U13~~ ✅ Thème + Nouveau déplacés dans le coin haut-droit du header
 #### ~~U14~~ ✅ TTL restant affiché dans l'overlay de partage
 #### ~~U15~~ ✅ Menu d'options d'impression
 #### ~~U16~~ ✅ Masquer le bouton sauvegarde en session active
+#### ~~U20~~ ✅ Changer la couleur des infos pour les sessions (peu visible)
+#### ~~U21~~ ✅ Changer la couleur des infosbox en sepia et light mode (c'est le meme que l'U 11)
+#### ~~U22~~ ✅ Changer le message de confirmation dans l'export de texte en information temporaire (infos box)
 #### ~~U23~~ ✅ Possibilité dans l'export d'exporter en plus: Le nom du groupe, les options d'impression, le lieu, les notes préviées, le lien privé.
 
 

@@ -52,7 +52,7 @@ main{padding:32px 40px;max-width:900px;margin:0 auto}
 .import-hint{font-size:10px;color:var(--muted);margin:10px 0 16px;line-height:1.8}.import-hint code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:2px;color:var(--grey)}
 .import-btns{display:flex;gap:10px}.btn-imp{flex:1;padding:11px;background:rgba(93,173,226,.1);border:1px solid rgba(93,173,226,.4);color:var(--blue);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:3px}.btn-cancel{padding:11px 18px;background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:3px}
 .sheet-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:400;align-items:flex-end;justify-content:center}.sheet-ov.open{display:flex}.sheet{background:var(--card);border:1px solid var(--border);border-bottom:none;border-radius:16px 16px 0 0;padding:20px 20px 40px;width:100%;max-width:600px}.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px}.sheet-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.sheet-ttl{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.1em;color:var(--gold)}.sheet-close-top{background:none;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:14px;cursor:pointer;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.sheet-close-top:hover{border-color:var(--gold-dim);color:var(--gold)}.sh-lbl{font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}.sh-inp{width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:12px;padding:10px 14px;outline:none;border-radius:4px}.sh-row2{display:flex;gap:10px}.sh-row2 .sh-inp{flex:1}.sh-dur{width:90px!important;flex:none!important}.sheet-close{width:100%;padding:13px;background:var(--black);border:1px solid var(--border);color:var(--grey);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:4px;margin-top:16px}
-#toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e1e1e;border:1px solid var(--gold-dim);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;padding:12px 20px;border-radius:4px;display:flex;align-items:center;gap:16px;z-index:9999;opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;white-space:nowrap}#toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}#toast-undo{background:none;border:1px solid var(--gold);color:var(--gold);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:2px}#toast-undo:hover{background:rgba(200,168,75,.15)}
+#toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);border:1px solid var(--gold-dim);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;padding:12px 20px;border-radius:4px;display:flex;align-items:center;gap:16px;z-index:9999;opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;white-space:nowrap}#toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}#toast-undo{background:none;border:1px solid var(--gold);color:var(--gold);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:2px}#toast-undo:hover{background:rgba(200,168,75,.15)}
 .pdf-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:20px}.pdf-ov.active{display:flex}.pdf-txt{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.2em;color:var(--gold)}.spinner{width:40px;height:40px;border:3px solid var(--gold-dim);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}#pdf-tgt{position:fixed;left:-9999px;top:0;width:794px;pointer-events:none}
 footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);letter-spacing:.18em;flex-wrap:wrap;gap:10px;margin-top:20px}
 .mob-arrows{display:none;flex-direction:column;gap:2px;align-items:center;justify-content:center;padding:0 4px}
@@ -108,7 +108,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
 </footer>
 <div class="overlay" id="share-ov"><div class="import-box" style="max-width:480px;">
   <div class="import-title" style="color:#9b59b6;">🔗 Partager la session</div>
-  <div class="import-sub" id="share-status-line">Génère un lien permanent pour ton groupe</div>
+  <div class="import-sub" id="share-status-line" style="color:var(--grey);">Génère un lien permanent pour ton groupe</div>
   <div style="margin:12px 0 8px;">
     <div class="sh-lbl">Ton nom dans la session</div>
     <input id="share-peer-name" type="text" class="sh-inp" placeholder="Ex : Guitare, Chef, Elie…" style="margin-top:6px;" maxlength="24">
@@ -120,14 +120,14 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
       <button id="btn-copy-share" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;" disabled>⎘</button>
     </div>
   </div>
-  <div id="share-peers" style="font-size:10px;color:var(--muted);letter-spacing:.15em;min-height:18px;margin-bottom:2px;"></div>
-  <div id="share-ttl" style="font-size:10px;color:var(--muted);letter-spacing:.12em;min-height:16px;margin-bottom:4px;"></div>
+  <div id="share-peers" style="font-size:10px;color:var(--white);letter-spacing:.15em;min-height:18px;margin-bottom:2px;"></div>
+  <div id="share-ttl" style="font-size:10px;color:var(--white);letter-spacing:.12em;min-height:16px;margin-bottom:4px;"></div>
   <div class="import-btns" style="margin-top:14px;">
     <button id="btn-share-create" class="btn-imp" type="button">🌐 Mettre en ligne</button>
     <button id="btn-share-disconnect" class="btn-imp" type="button" style="background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.4);color:#e74c3c;display:none;">✕ Déconnecter</button>
     <button class="btn-cancel" id="btn-cancel-share" type="button">Fermer</button>
   </div>
-  <div style="font-size:10px;color:var(--muted);margin-top:14px;line-height:1.8;">
+  <div style="font-size:10px;color:var(--grey);margin-top:14px;line-height:1.8;">
     Partage le lien à tes musiciens — ils verront la setlist à jour en temps réel.<br>
     Tout le monde peut modifier. L'app fonctionne aussi hors ligne sans session.
   </div>
@@ -473,11 +473,13 @@ $('btn-cancel-texte').addEventListener('click',()=>$('texte-ov').classList.remov
 $('texte-ov').addEventListener('click',e=>{if(e.target===$('texte-ov'))$('texte-ov').classList.remove('open')});
 $('btn-copy-texte').addEventListener('click',async()=>{
   const text=$('texte-ta').value;
-  try{await navigator.clipboard.writeText(text); alert('Texte copié dans le presse-papiers.');}
-  catch(e){$('texte-ta').focus();$('texte-ta').select();alert('Copie auto impossible — le texte est sélectionné, fais Ctrl/Cmd+C.');}
+  try{await navigator.clipboard.writeText(text); showToast('Texte copié ✓',()=>{});}
+  catch(e){$('texte-ta').focus();$('texte-ta').select(); showToast('Sélectionne le texte — Ctrl/Cmd+C',()=>{});}
 });
+
+//U22
 $('btn-apply-texte').addEventListener('click',()=>{
-  if(items.length && !confirm('Remplacer toute la setlist par ce texte ?')) return;
+  const prev={items:[...items],badges:[...headerBadges],band:$('band-name').value,venue:$('footer-venue').value};
   const {imported, badgesParsed, bandParsed, venueParsed, printParsed} = parseImport($('texte-ta').value);
   if(badgesParsed){
     headerBadges = badgesParsed.map((label)=>({id:'hb'+(nextBadgeId++), label}));
@@ -491,9 +493,13 @@ $('btn-apply-texte').addEventListener('click',()=>{
     $('pdf-include-comment').checked = printParsed.comment;
   }
   items = imported;
-  renderList();
-  syncFooter();
+  renderList(); syncFooter();
   $('texte-ov').classList.remove('open');
+  showToast(`Setlist importée (${imported.filter(i=>i.type==='song').length} titres)`,()=>{
+    items=prev.items; headerBadges=prev.badges;
+    $('band-name').value=prev.band; $('footer-venue').value=prev.venue;
+    renderBadges(); renderList(); syncFooter();
+  });
 });
 // ══ PDF unique (U6) ══
 $('btn-pdf').addEventListener('click', generatePDF());
@@ -526,7 +532,7 @@ const THEME_ORDER = ['dark-gold','sepia','light-paper'];
 const THEME_NEXT  = {'dark-gold':'sepia','sepia':'light-paper','light-paper':'dark-gold'};
 const THEME_ICON  = {'dark-gold':'📜','sepia':'☀','light-paper':'🌙'};
 const THEME_LBL   = {'dark-gold':'Sépia','sepia':'Light','light-paper':'Dark'};
-let currentTheme='dark-gold';
+let currentTheme='sepia';
 
 function applyTheme(key){
   const t=THEMES[key]; if(!t) return; currentTheme=key;
@@ -897,7 +903,7 @@ renderList = function(...args){
 $('band-name').addEventListener('input', wsPatch);
 $('footer-venue').addEventListener('input', wsPatch);
 
-renderBadges(); renderList(); syncFooter();
+applyTheme('sepia');renderBadges(); renderList(); syncFooter();
 </script>
 </body>
 </html>
