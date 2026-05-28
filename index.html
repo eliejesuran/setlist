@@ -81,6 +81,14 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
           <input type="checkbox" id="pdf-include-comment" checked style="accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
           <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--white);">Notes de scène</span>
         </label>
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 0;border-bottom:1px solid var(--border);">
+          <input type="checkbox" id="pdf-include-private-url" style="accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
+          <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--white);">Lien privé</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 0;">
+          <input type="checkbox" id="pdf-include-private-note" style="accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
+          <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--white);">Note privée</span>
+        </label>
       </div>
     </div>
     <button class="hbtn" id="btn-new-session" type="button" title="Nouvelle setlist offline"><span>+</span><span class="lbl">Nouveau</span></button>
@@ -224,6 +232,8 @@ function buildPdfHtml(mode){
   const includeTiming=$('pdf-include-timing').checked;
   const includeArtist=$('pdf-include-artist').checked;
   const includeComment=$('pdf-include-comment').checked;
+  const includePrivateUrl=$('pdf-include-private-url').checked;
+  const includePrivateNote=$('pdf-include-private-note').checked;
   const BG    =isLight?'#ffffff':'#0a0a0a';
   const TEXT  =isLight?'#111111':'#f0ece0';
   const SUB   =isLight?'#444444':'#D9C382';
@@ -265,18 +275,22 @@ function buildPdfHtml(mode){
   // Song row height estimate: ~38px for title only, +20px if has comment
   // Separator: ~28px. Header: ~82px. Footer: ~34px. Page content height: 794*297/210 - header - footer ≈ 980px usable
   // At 14 songs/page: each song ~62px average → fits in ~868px content area
-  const PAGE_H   = 1123; // A4 portrait height in px at 96dpi
-  const HEADER_H = 82;
-  const FOOTER_H = 34;
-  const SEP_H    = 28;
-  const CONTENT_H= PAGE_H - HEADER_H - FOOTER_H - 20; // ~987px
+  const PAGE_H    = 1123;
+  const HEADER_P1 = 90;
+  const HEADER_PN = 48;
+  const FOOTER_H  = 38;
+  const MARGIN    = 10;
+  const CONTENT_P1 = PAGE_H - HEADER_P1 - FOOTER_H - MARGIN; // ~985px
+  const CONTENT_PN = PAGE_H - HEADER_PN - FOOTER_H - MARGIN; // ~1027px
 
   // Split items into pages
   function itemHeight(item){
-    if(item.type==='sep') return SEP_H;
+    if(item.type==='sep') return 40;
     const hc=includeComment&&item.comment&&item.comment.trim();
     const ha=includeArtist&&item.artist&&item.artist.trim();
-    return (hc||ha) ? 60 : 42;
+    if(hc && ha) return 88;
+    if(hc || ha) return 70+15;
+    return 56;
   }
 
   const pages=[];
@@ -287,8 +301,9 @@ function buildPdfHtml(mode){
   items.forEach((item,idx)=>{
     const h=itemHeight(item);
     // Try page break at separator if it would be cleaner
-    const sepBreak = item.type==='sep' && currentH > CONTENT_H*0.6 && currentH > 200;
-    if(currentH+h > CONTENT_H || sepBreak){
+    const contentH = pages.length===0 ? CONTENT_P1 : CONTENT_PN;
+    const sepBreak = item.type==='sep' && currentH > contentH*0.6 && currentH > 200;
+    if(currentH+h > contentH || sepBreak){
       if(currentPage.length) pages.push(currentPage);
       currentPage=[]; currentH=0;
     }
@@ -328,13 +343,15 @@ function buildPdfHtml(mode){
             <div style="font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:.04em;color:${TEXT};line-height:1.0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.title||'\u2014'}</div>
             ${ha?`<div style="font-family:'Space Mono',monospace;font-size:11px;color:${MUTED};margin-top:1px;letter-spacing:.05em;font-style:italic;">${item.artist}</div>`:''}
             ${hc?`<div style="font-family:'Space Mono',monospace;font-size:14px;color:${CMT_CLR};margin-top:2px;line-height:1.3;">${item.comment}</div>`:''}
+            ${includePrivateUrl&&item.privateUrl?`<div style="font-family:'Space Mono',monospace;font-size:10px;color:${MUTED};margin-top:2px;font-style:italic;">🔗 ${item.privateUrl}</div>`:''}
+            ${includePrivateNote&&item.privateNote?`<div style="font-family:'Space Mono',monospace;font-size:11px;color:${CMT_CLR};margin-top:2px;line-height:1.3;border-left:2px solid ${BORDER};padding-left:6px;">${item.privateNote}</div>`:''}
           </div>
           ${includeTiming?`<span style="font-family:'Space Mono',monospace;font-size:13px;color:${SUB};white-space:nowrap;flex-shrink:0;padding-top:6px;">${item.duration}</span>`:''}
         </div>`;
       }
     });
 
-    return `<div style="width:794px;min-height:1123px;background:${BG};font-family:'Space Mono',monospace;padding:0;display:flex;flex-direction:column;page-break-after:${pi<pages.length-1?'always':'avoid'};">
+    return `<div style="width:794px;height:1123px;overflow:hidden;background:${BG};font-family:'Space Mono',monospace;padding:0;display:flex;flex-direction:column;page-break-after:${pi<pages.length-1?'always':'avoid'};">
       ${pi===0?headerHtml:`<div style="padding:10px 28px 6px;border-bottom:1px solid ${BDIM};font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.08em;color:${MUTED};">${bn} (suite)</div>`}
       <div style="flex:1;padding:4px 0;">${rows}</div>
       ${footerHtml}

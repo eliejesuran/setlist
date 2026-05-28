@@ -300,7 +300,6 @@ Les items sont classés par priorité : 🔴 bug / 🟠 robustesse / 🟡 UX / �
 #### U17 donner la liste des gens connectés sur la sessions, 
 #### U18 Gérer les sessions (possibilité de les supprimer, voir si y'en a pas trop)
 #### U19 Possibilité de se connecter sur la bonne session avec le code/ voir même pouvoir donner un nom à la session
-#### U24 Quand on passe à deux pages, le format n'est pas respecté sur toutes les pages. 
 
 ---
 
@@ -386,6 +385,7 @@ URL : `wss://setlist-21hb.onrender.com`. Keep-alive via UptimeRobot (ping `/heal
 #### ~~U21~~ ✅ Changer la couleur des infosbox en sepia et light mode (c'est le meme que l'U 11)
 #### ~~U22~~ ✅ Changer le message de confirmation dans l'export de texte en information temporaire (infos box)
 #### ~~U23~~ ✅ Possibilité dans l'export d'exporter en plus: Le nom du groupe, les options d'impression, le lieu, les notes préviées, le lien privé.
+#### ~~U24~~ ✅ Quand on passe à deux pages, le format n'est pas respecté sur toutes les pages.
 
 
 ### 🟢 Mineurs — Réalisé
