@@ -186,7 +186,9 @@ function showToast(msg, undoFn){
 function makeSep(sep,idx){const row=document.createElement('div'); row.className='row-sep'; const ll=document.createElement('div'); ll.className='sep-line-l'; row.appendChild(ll); const badge=document.createElement('div'); badge.className='sep-badge'; const li=document.createElement('input'); li.className='inp-sep'; li.value=sep.label; li.placeholder='Séparateur…'; li.style.width=Math.max(60,sep.label.length*9)+'px'; li.oninput=()=>{sep.label=li.value; li.style.width=Math.max(60,li.value.length*9)+'px'; wsPatch()}; badge.appendChild(li); const sub=document.createElement('span'); sub.className='sep-sub'; sub.dataset.sub=sep.id; sub.textContent=fmtDur(subBefore(idx)); badge.appendChild(sub); const db=document.createElement('button'); db.type='button'; db.className='btn-del-sep'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===sep.id); items=items.filter(i=>i.id!==sep.id); renderList(); showToast(`Séparateur "${sep.label}" supprimé`,()=>{items.splice(idx,0,sep)})}; badge.appendChild(db); row.appendChild(badge); const lr=document.createElement('div'); lr.className='sep-line-r'; row.appendChild(lr); return row}
 function addSong(d={}){items.push({type:'song',id:'s'+nextId++,title:d.title||'',artist:d.artist||'',duration:d.duration||'0:00',comment:d.comment||'',privateUrl:d.privateUrl||'',privateNote:d.privateNote||''}); renderList()}
 function addSep(lbl=''){items.push({type:'sep',id:'sep'+nextId++,label:lbl||'— Pause —'}); renderList()}
+let _sheetDirty = false;
 function openSheet(song){
+  _sheetDirty = false;
   $('sh-name').textContent=song.title||'Nouveau titre';
   $('sh-title').value=song.title||'';
   $('sh-artist').value=song.artist||'';
@@ -194,17 +196,17 @@ function openSheet(song){
   $('sh-comment').value=song.comment||'';
   $('sh-private-url').value=song.privateUrl||'';
   $('sh-private-note').value=song.privateNote||'';
-  $('sh-title').oninput=()=>{song.title=$('sh-title').value; $('sh-name').textContent=song.title||'—'; wsPatch()};
-  $('sh-artist').oninput=()=>{song.artist=$('sh-artist').value; wsPatch()};
-  $('sh-dur').oninput=()=>{song.duration=$('sh-dur').value; wsPatch()};
-  $('sh-dur').onblur=()=>{const s=parseDur($('sh-dur').value); $('sh-dur').value=fmtDur(s); song.duration=$('sh-dur').value; wsPatch()};
-  $('sh-comment').oninput=()=>{song.comment=$('sh-comment').value; wsPatch()};
-  $('sh-private-url').oninput=()=>{song.privateUrl=$('sh-private-url').value; wsPatch()};
-  $('sh-private-note').oninput=()=>{song.privateNote=$('sh-private-note').value; wsPatch()};
+  $('sh-title').oninput=()=>{_sheetDirty=true; song.title=$('sh-title').value; $('sh-name').textContent=song.title||'—'; wsPatch()};
+  $('sh-artist').oninput=()=>{_sheetDirty=true; song.artist=$('sh-artist').value; wsPatch()};
+  $('sh-dur').oninput=()=>{_sheetDirty=true; song.duration=$('sh-dur').value; wsPatch()};
+  $('sh-dur').onblur=()=>{const s=parseDur($('sh-dur').value); $('sh-dur').value=fmtDur(s); song.duration=$('sh-dur').value; if(_sheetDirty) wsPatch()};
+  $('sh-comment').oninput=()=>{_sheetDirty=true; song.comment=$('sh-comment').value; wsPatch()};
+  $('sh-private-url').oninput=()=>{_sheetDirty=true; song.privateUrl=$('sh-private-url').value; wsPatch()};
+  $('sh-private-note').oninput=()=>{_sheetDirty=true; song.privateNote=$('sh-private-note').value; wsPatch()};
   $('sheet-ov').classList.add('open');
   setTimeout(()=>$('sh-title').focus(),100);
 }
-function closeSheet(){$('sheet-ov').classList.remove('open'); renderList();}
+function closeSheet(){$('sheet-ov').classList.remove('open'); if(_sheetDirty) renderList();}
 function exportImportFormat(){
   const badgesLine  = '##BADGES: '+headerBadges.map(b=>b.label).join(' | ');
   const bandLine    = '##BAND: '+($('band-name').value||'');
@@ -360,9 +362,11 @@ function buildPdfHtml(mode){
 
   return {bg:BG, html:`<div style="width:794px;background:${BG};">${pagesHtml}</div>`};
 }
+let _pdfGenerating = false;
 function generatePDF(){return async()=>{
-  // U6: utilise le thème actif (dark-gold → dark, sinon light)
-  const mode = currentTheme === 'dark-gold' ? 'dark' : 'light'; // sepia → light PDF
+  if(_pdfGenerating) return;
+  _pdfGenerating = true;
+  const mode = currentTheme === 'dark-gold' ? 'dark' : 'light';
   const ov=$('pdf-ov'); ov.classList.add('active');
   try{
     const {bg,html}=buildPdfHtml(mode);
@@ -395,7 +399,7 @@ function generatePDF(){return async()=>{
     tgt.innerHTML=''; tgt.style.width='';
     doc.save('setlist_'+slugPDF+'_'+mode+'.pdf');
   }catch(e){console.error(e); alert('Erreur PDF. Essaie depuis Chrome.');}
-  finally{ov.classList.remove('active');}
+  finally{ov.classList.remove('active'); _pdfGenerating=false;}
 }}
 function saveHtml(){const esc=s=>String(s).replace(/"/g,'&quot;'); let html=document.documentElement.outerHTML; html=html.replace(/let headerBadges=\[[\s\S]*?\];/,'let headerBadges='+JSON.stringify(headerBadges)+';'); html=html.replace(/let items=\[[\s\S]*?\];/,'let items='+JSON.stringify(items)+';'); html=html.replace(/id="band-name" value="[^"]*"/,`id="band-name" value="${esc($('band-name').value)}"`); html=html.replace(/id="footer-venue" value="[^"]*"/,`id="footer-venue" value="${esc($('footer-venue').value)}"`); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'})); const slugHTML=headerBadges.slice(0,3).map(b=>b.label.replace(/[^a-z0-9]/gi,'_')).join('_'); a.download='setlist_'+slugHTML+'_setlist.html'; a.click()}
 $('btn-add-song').addEventListener('click',()=>addSong());
@@ -436,7 +440,9 @@ function parseImport(text){
     }
 
     if(!raw || raw==='---'){
-      if(hasItem) imported.push({type:'sep', id:'sep'+nextId++, label:'— Pause —'});
+      const lastItem = imported[imported.length-1];
+      if(hasItem && (!lastItem || lastItem.type!=='sep'))
+        imported.push({type:'sep', id:'sep'+nextId++, label:'— Pause —'});
       return;
     }
 
@@ -448,17 +454,15 @@ function parseImport(text){
     const privIdx = core.indexOf(' &privé: ');
     if(privIdx !== -1){ privateUrl = core.slice(privIdx+9).trim(); core = core.slice(0,privIdx).trim(); }
 
-    const durMatch = core.match(/(\d+:\d{2})(?!.*\d+:\d{2})/);
-    const duration = durMatch ? durMatch[1] : '0:00';
-    const withoutDur = durMatch
-      ? core.replace(durMatch[1],'').replace(/\s*-\s*$/,'').trim()
-      : core;
-    const parts = withoutDur.split(/\s*-\s*/).map(s=>s.trim()).filter(Boolean);
+    const parts = core.split(/\s*-\s*/).map(s=>s.trim()).filter(Boolean);
+    const durIdx = parts.findIndex(p=>/^\d+:\d{2}$/.test(p));
+    const duration = durIdx !== -1 ? parts[durIdx] : '0:00';
+    const songParts = durIdx !== -1 ? parts.filter((_,i)=>i!==durIdx) : parts;
 
     imported.push({
       type:'song', id:'s'+nextId++,
-      title: parts[0]||'', artist: parts[1]||'',
-      duration, comment: parts.slice(2).join(' - '),
+      title: songParts[0]||'', artist: songParts[1]||'',
+      duration, comment: songParts.slice(2).join(' - '),
       privateUrl, privateNote
     });
     hasItem = true;
@@ -590,8 +594,20 @@ function lsLoad(){
     const raw = localStorage.getItem(LS_KEY);
     if(!raw) return false;
     const state = JSON.parse(raw);
-    if(state.items)         items         = state.items;
-    if(state.headerBadges)  headerBadges  = state.headerBadges;
+    if(state.items){
+      items = state.items;
+      items.forEach(item=>{
+        const n=parseInt((item.id||'').replace(/\D/g,''));
+        if(n>=nextId) nextId=n+1;
+      });
+    }
+    if(state.headerBadges){
+      headerBadges = state.headerBadges;
+      headerBadges.forEach(b=>{
+        const n=parseInt((b.id||'').replace(/\D/g,''));
+        if(n>=nextBadgeId) nextBadgeId=n+1;
+      });
+    }
     if(state.bandName)      $('band-name').value      = state.bandName;
     if(state.footerVenue)   $('footer-venue').value   = state.footerVenue;
     return state.savedAt || true;
@@ -644,7 +660,8 @@ if(restored){
 const WS_SERVER = 'https://setlist-21hb.onrender.com';
 let ws = null;
 let wsSessionId = null;
-let wsSuppressPatch = false; // évite la boucle : patch reçu → renderList → patch émis
+let wsSuppressPatch = false;
+let _wsReconnectDelay = 2000; // backoff exponentiel : 2s → 4s → 8s → max 30s
 
 function wsPeerName(){
   return ($('share-peer-name')?.value.trim()) || 'Anonyme';
@@ -666,42 +683,61 @@ function wsIndicator(state){
 }
 
 function wsGetState(){
+  let savedAt = null;
+  try { const r=localStorage.getItem(LS_KEY); if(r) savedAt=JSON.parse(r).savedAt; } catch{}
   return {
     items,
     headerBadges,
     bandName:    $('band-name').value,
     footerVenue: $('footer-venue').value,
+    savedAt,
   };
 }
 
-function wsApplyState(state){
+function wsApplyState(state, isInit=false){
   if(!state) return;
-  // B8
-  if(!wsSuppressPatch && state.savedAt){
+  // B8 : à la reconnexion seulement, si la version locale est plus récente,
+  // on applique quand même l'état distant mais on propose un undo via toast
+  if(isInit && !wsSuppressPatch && state.savedAt){
     const localRaw = localStorage.getItem(LS_KEY);
     if(localRaw){
       try{
         const local = JSON.parse(localRaw);
         if(local.savedAt && local.savedAt > state.savedAt){
-          if(confirm('Ta version locale est plus récente.\nGarder tes modifications ?')){
-            wsPatch();
-            return;
-          }
+          const snapshot = {items:[...items], headerBadges:[...headerBadges],
+            band:$('band-name').value, venue:$('footer-venue').value};
+          // on applique l'état distant, puis on laisse l'utilisateur annuler
+          _doApplyState(state);
+          showToast('Version distante chargée — tes modifs locales ont été remplacées', ()=>{
+            items=snapshot.items; headerBadges=snapshot.headerBadges;
+            $('band-name').value=snapshot.band; $('footer-venue').value=snapshot.venue;
+            renderBadges(); renderList(); syncFooter(); wsPatch();
+          });
+          return;
         }
       }catch{}
     }
   }
   
+  _doApplyState(state);
+}
+
+function _doApplyState(state){
   wsSuppressPatch = true;
   if(state.items){
     items = state.items;
-    // Resync nextId pour éviter les collisions d'ID après réception
     items.forEach(item=>{
       const n=parseInt((item.id||'').replace(/\D/g,''));
       if(n>=nextId) nextId=n+1;
     });
   }
-  if(state.headerBadges) headerBadges = state.headerBadges;
+  if(state.headerBadges){
+    headerBadges = state.headerBadges;
+    headerBadges.forEach(b=>{
+      const n=parseInt((b.id||'').replace(/\D/g,''));
+      if(n>=nextBadgeId) nextBadgeId=n+1;
+    });
+  }
   if(state.bandName)     $('band-name').value    = state.bandName;
   if(state.footerVenue)  $('footer-venue').value = state.footerVenue;
   renderBadges(true);
@@ -741,12 +777,7 @@ function wsUpdateShareUI(){
   if(statusLine) statusLine.textContent = connected
     ? `En ligne — session ${wsSessionId} — connecté en tant que ${wsPeerName()}`
     : 'Travaille offline ou génère un lien pour partager avec ton groupe';
-  // U9 : griser Texte + Sauvegarde quand connecté (source de vérité = serveur)
-  const dim = connected ? '.4' : '1';
-  const pe  = connected ? 'none' : '';
-  const btnTexte = $('btn-texte');
-  const btnSave  = $('btn-localsave');
- // if(btnTexte){ btnTexte.style.opacity=dim; btnTexte.style.pointerEvents=pe; btnTexte.title=connected?'Indisponible en session collaborative':''; }
+  const btnSave = $('btn-localsave');
   if(btnSave) { btnSave.style.display = connected ? 'none' : ''; }
 
   // U14 : TTL de la session
@@ -762,6 +793,7 @@ function wsConnect(sessionId){
 
   ws.onopen = () => {
     _wsConnectedAt = Date.now();
+    _wsReconnectDelay = 2000; // reset backoff à la connexion réussie
     wsIndicator('on');
     wsUpdateShareUI();
     wsPatch();
@@ -781,7 +813,7 @@ function wsConnect(sessionId){
     try { msg = JSON.parse(evt.data); } catch { return; }
 
     if(msg.type === 'init' || msg.type === 'patch'){
-      wsApplyState(msg.state);
+      wsApplyState(msg.state, msg.type === 'init');
     }
     if(msg.type === 'peer_joined' || msg.type === 'peer_left' || msg.type === 'init' || msg.type === 'joined'){
       const peersEl = $('share-peers');
@@ -800,11 +832,12 @@ function wsConnect(sessionId){
   ws.onclose = () => {
     wsIndicator('off');
     wsUpdateShareUI();
-    // Tentative de reconnexion automatique après 5s si on avait une session
     if(wsSessionId){
+      const delay = _wsReconnectDelay;
+      _wsReconnectDelay = Math.min(_wsReconnectDelay * 2, 30000);
       setTimeout(()=>{
-        if(!ws || ws.readyState === WebSocket.CLOSED) wsConnect(wsSessionId);
-      }, 5000);
+        if(wsSessionId && (!ws || ws.readyState === WebSocket.CLOSED)) wsConnect(wsSessionId);
+      }, delay);
     }
   };
 
@@ -814,7 +847,6 @@ function wsConnect(sessionId){
 }
 
 function wsDisconnect(){
-  const prevId = wsSessionId;
   wsSessionId = null;
   _wsConnectedAt = null;
   if(ws){ ws.close(); ws = null; }
