@@ -5,238 +5,254 @@
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
+import { createServer } from 'http';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const PORT           = process.env.PORT || 3001;
-const SESSION_TTL_MS = 15* 24 * 60 * 60 * 1000;  // 15 jours d'inactivité → expiration
-const MAX_SESSIONS   = 100;
-const MAX_PEERS      = 20;
-
-// Anti-bot
-const ALLOWED_ORIGINS = [
+export const SESSION_TTL_MS     = 15 * 24 * 60 * 60 * 1000;
+export const MAX_SESSIONS       = 100;
+export const MAX_PEERS          = 20;
+export const ALLOWED_ORIGINS    = [
   'https://eliejesuran.github.io',
   'https://jesuran.be',
   'https://www.jesuran.be',
   'https://eliejesuran.be',
   'https://www.eliejesuran.be',
-  'http://localhost',        // dev local
-  'http://127.0.0.1',       // dev local
-  'file://',                 // fichier ouvert localement (file://)
+  'http://localhost',
+  'http://127.0.0.1',
+  'file://',
 ];
-// origin="null" est envoyé par les navigateurs quand le fichier est ouvert
-// en file:// ou depuis un contexte opaque — on l'autorise explicitement
-const ALLOW_NULL_ORIGIN = true;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;  // fenêtre de 1 minute
-const RATE_LIMIT_MAX       = 10;          // max 10 connexions par IP par minute
+export const ALLOW_NULL_ORIGIN    = true;
+export const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+export const RATE_LIMIT_MAX       = 10;
 
-// ─── État en mémoire ──────────────────────────────────────────────────────────
+// ─── Factory ──────────────────────────────────────────────────────────────────
 
-const sessions  = new Map();   // sessionId → Session
-const connRates = new Map();   // ip → { count, resetAt }
+export function createApp(opts = {}) {
+  const {
+    sessionTtl        = SESSION_TTL_MS,
+    maxSessions       = MAX_SESSIONS,
+    maxPeers          = MAX_PEERS,
+    allowedOrigins    = ALLOWED_ORIGINS,
+    allowNullOrigin   = ALLOW_NULL_ORIGIN,
+    rateLimitWindowMs = RATE_LIMIT_WINDOW_MS,
+    rateLimitMax      = RATE_LIMIT_MAX,
+  } = opts;
 
-// ─── Rate limiter ─────────────────────────────────────────────────────────────
+  const sessions  = new Map();   // sessionId → Session
+  const connRates = new Map();   // ip → { count, resetAt }
 
-function checkRateLimit(ip) {
-  const now = Date.now();
-  let entry = connRates.get(ip);
+  // ─── Rate limiter ───────────────────────────────────────────────────────────
 
-  if (!entry || now > entry.resetAt) {
-    entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
-    connRates.set(ip, entry);
+  function checkRateLimit(ip, _now = Date.now()) {
+    let entry = connRates.get(ip);
+
+    if (!entry || _now > entry.resetAt) {
+      entry = { count: 0, resetAt: _now + rateLimitWindowMs };
+      connRates.set(ip, entry);
+    }
+
+    entry.count++;
+
+    if (connRates.size > 5000) {
+      for (const [k, v] of connRates) {
+        if (_now > v.resetAt) connRates.delete(k);
+      }
+    }
+
+    return entry.count <= rateLimitMax;
   }
 
-  entry.count++;
+  // ─── Helpers ────────────────────────────────────────────────────────────────
 
-  // Nettoyage périodique pour éviter la fuite mémoire
-  if (connRates.size > 5000) {
-    for (const [k, v] of connRates) {
-      if (now > v.resetAt) connRates.delete(k);
+  function send(ws, obj) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(obj));
     }
   }
 
-  return entry.count <= RATE_LIMIT_MAX;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function send(ws, obj) {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(obj));
-  }
-}
-
-function broadcast(session, obj, exclude = null) {
-  for (const client of session.clients) {
-    if (client !== exclude) send(client, obj);
-  }
-}
-
-function touch(session) {
-  clearTimeout(session.timer);
-  session.expireAt = Date.now() + SESSION_TTL_MS;
-  session.timer = setTimeout(() => expireSession(session.id), SESSION_TTL_MS);
-}
-
-function expireSession(id) {
-  const session = sessions.get(id);
-  if (!session) return;
-  for (const client of session.clients) {
-    send(client, { type: 'session_expired', sessionId: id });
-    client.close(1001, 'Session expirée');
-  }
-  sessions.delete(id);
-  console.log(`[session] ${id} expirée — ${sessions.size} session(s) actives`);
-}
-
-function getOrCreateSession(id) {
-  if (sessions.has(id)) return sessions.get(id);
-
-  if (sessions.size >= MAX_SESSIONS) {
-    const oldest = [...sessions.values()].sort((a, b) => a.expireAt - b.expireAt)[0];
-    expireSession(oldest.id);
+  function broadcast(session, obj, exclude = null) {
+    for (const client of session.clients) {
+      if (client !== exclude) send(client, obj);
+    }
   }
 
-  const session = { id, state: null, clients: new Set(), expireAt: 0, timer: null };
-  sessions.set(id, session);
-  console.log(`[session] ${id} créée — ${sessions.size} session(s) actives`);
-  return session;
-}
-
-// ─── Serveur WebSocket ────────────────────────────────────────────────────────
-import { createServer } from 'http';
-
-const httpServer = createServer((req, res) => {
-  if (req.url === '/healthz') {
-    res.writeHead(200); res.end('ok');
-  } else {
-    res.writeHead(404); res.end();
+  function touch(session) {
+    clearTimeout(session.timer);
+    session.expireAt = Date.now() + sessionTtl;
+    session.timer = setTimeout(() => expireSession(session.id), sessionTtl);
+    session.timer.unref?.();
   }
-});
-httpServer.listen(PORT);
-const wss = new WebSocketServer({
-  server: httpServer,
-  // Vérification de l'Origin à la négociation WebSocket
-  verifyClient: ({ origin, req }, cb) => {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim()
-             || req.socket.remoteAddress;
 
-    // 1. Origin check
-    // origin peut être : absent (undefined), "null" (string, file:// ou contexte opaque),
-    // ou une URL complète. On autorise les origines listées + null si ALLOW_NULL_ORIGIN.
-    const originOk = !origin
-      || (ALLOW_NULL_ORIGIN && origin === 'null')
-      || ALLOWED_ORIGINS.some(o => origin.startsWith(o));
-    if (!originOk) {
-      console.warn(`[blocked] origin="${origin}" ip=${ip}`);
-      return cb(false, 403, 'Forbidden');
+  function expireSession(id) {
+    const session = sessions.get(id);
+    if (!session) return;
+    for (const client of session.clients) {
+      send(client, { type: 'session_expired', sessionId: id });
+      client.close(1001, 'Session expirée');
+    }
+    sessions.delete(id);
+    console.log(`[session] ${id} expirée — ${sessions.size} session(s) actives`);
+  }
+
+  function getOrCreateSession(id) {
+    if (sessions.has(id)) return sessions.get(id);
+
+    if (sessions.size >= maxSessions) {
+      const oldest = [...sessions.values()].sort((a, b) => a.expireAt - b.expireAt)[0];
+      expireSession(oldest.id);
     }
 
-    // 2. Rate limit
-    if (!checkRateLimit(ip)) {
-      console.warn(`[rate-limit] ip=${ip}`);
-      return cb(false, 429, 'Too Many Requests');
+    const session = { id, state: null, clients: new Set(), expireAt: 0, timer: null };
+    sessions.set(id, session);
+    console.log(`[session] ${id} créée — ${sessions.size} session(s) actives`);
+    return session;
+  }
+
+  // ─── Serveur HTTP ─────────────────────────────────────────────────────────────
+
+  const httpServer = createServer((req, res) => {
+    if (req.url === '/healthz') {
+      res.writeHead(200); res.end('ok');
+    } else {
+      res.writeHead(404); res.end();
     }
+  });
 
-    cb(true);
-  },
-});
+  // ─── Serveur WebSocket ────────────────────────────────────────────────────────
 
-wss.on('connection', (ws, req) => {
-  const match = req.url?.match(/^\/session\/([a-z0-9]{4,16})$/);
-  if (!match) {
-    ws.close(1008, 'URL invalide — utilise /session/{id}');
-    return;
-  }
+  const wss = new WebSocketServer({
+    server: httpServer,
+    verifyClient: ({ origin, req }, cb) => {
+      const ip = req.headers['x-forwarded-for']?.split(',')[0].trim()
+               || req.socket.remoteAddress;
 
-  const sessionId = match[1];
-  const session   = getOrCreateSession(sessionId);
+      const originOk = !origin
+        || (allowNullOrigin && origin === 'null')
+        || allowedOrigins.some(o => origin.startsWith(o));
+      if (!originOk) {
+        console.warn(`[blocked] origin="${origin}" ip=${ip}`);
+        return cb(false, 403, 'Forbidden');
+      }
 
-  if (session.clients.size >= MAX_PEERS) {
-    send(ws, { type: 'error', code: 'SESSION_FULL', message: `Session pleine (max ${MAX_PEERS})` });
-    ws.close(1008, 'Session pleine');
-    return;
-  }
+      if (!checkRateLimit(ip)) {
+        console.warn(`[rate-limit] ip=${ip}`);
+        return cb(false, 429, 'Too Many Requests');
+      }
 
-  session.clients.add(ws);
-  touch(session);
+      cb(true);
+    },
+  });
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim()
-           || req.socket.remoteAddress;
-  console.log(`[connect] session=${sessionId} peers=${session.clients.size} ip=${ip}`);
-
-  // Envoyer l'état courant au nouveau venu
-  if (session.state) {
-    send(ws, { type: 'init', sessionId, state: session.state, peers: session.clients.size });
-  } else {
-    send(ws, { type: 'joined', sessionId, peers: session.clients.size });
-  }
-
-  broadcast(session, { type: 'peer_joined', peers: session.clients.size }, ws);
-
-  // ── Messages entrants ──────────────────────────────────────────────────────
-
-  ws.on('message', (raw) => {
-    // Limiter la taille des messages (max 128 Ko) pour éviter les abus
-    if (raw.length > 131072) {
-      send(ws, { type: 'error', code: 'MSG_TOO_LARGE', message: 'Message trop grand (max 128 Ko)' });
+  wss.on('connection', (ws, req) => {
+    const match = req.url?.match(/^\/session\/([a-z0-9]{4,16})$/);
+    if (!match) {
+      ws.close(1008, 'URL invalide — utilise /session/{id}');
       return;
     }
 
-    let msg;
-    try { msg = JSON.parse(raw); } catch {
-      send(ws, { type: 'error', code: 'BAD_JSON' });
+    const sessionId = match[1];
+    const session   = getOrCreateSession(sessionId);
+
+    if (session.clients.size >= maxPeers) {
+      send(ws, { type: 'error', code: 'SESSION_FULL', message: `Session pleine (max ${maxPeers})` });
+      ws.close(1008, 'Session pleine');
       return;
     }
 
+    session.clients.add(ws);
     touch(session);
 
-    switch (msg.type) {
-      case 'patch': {
-        if (!msg.state || typeof msg.state !== 'object') break;
-        session.state = msg.state;
-        broadcast(session, {
-          type: 'patch', sessionId,
-          state: session.state,
-          peers: session.clients.size,
-          timestamp: Date.now(),
-        }, ws);
-        break;
-      }
-      case 'ping': {
-        send(ws, { type: 'pong', timestamp: Date.now() });
-        break;
-      }
-      default:
-        send(ws, { type: 'error', code: 'UNKNOWN_TYPE' });
+    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim()
+             || req.socket.remoteAddress;
+    console.log(`[connect] session=${sessionId} peers=${session.clients.size} ip=${ip}`);
+
+    if (session.state) {
+      send(ws, { type: 'init', sessionId, state: session.state, peers: session.clients.size });
+    } else {
+      send(ws, { type: 'joined', sessionId, peers: session.clients.size });
     }
+
+    broadcast(session, { type: 'peer_joined', peers: session.clients.size }, ws);
+
+    ws.on('message', (raw) => {
+      if (raw.length > 131072) {
+        send(ws, { type: 'error', code: 'MSG_TOO_LARGE', message: 'Message trop grand (max 128 Ko)' });
+        return;
+      }
+
+      let msg;
+      try { msg = JSON.parse(raw); } catch {
+        send(ws, { type: 'error', code: 'BAD_JSON' });
+        return;
+      }
+
+      touch(session);
+
+      switch (msg.type) {
+        case 'patch': {
+          if (!msg.state || typeof msg.state !== 'object') break;
+          session.state = msg.state;
+          broadcast(session, {
+            type: 'patch', sessionId,
+            state: session.state,
+            peers: session.clients.size,
+            timestamp: Date.now(),
+          }, ws);
+          break;
+        }
+        case 'ping': {
+          send(ws, { type: 'pong', timestamp: Date.now() });
+          break;
+        }
+        default:
+          send(ws, { type: 'error', code: 'UNKNOWN_TYPE' });
+      }
+    });
+
+    ws.on('close', () => {
+      session.clients.delete(ws);
+      console.log(`[disconnect] session=${sessionId} peers=${session.clients.size}`);
+      if (session.clients.size > 0) {
+        broadcast(session, { type: 'peer_left', peers: session.clients.size });
+      }
+    });
+
+    ws.on('error', (err) => {
+      console.error(`[ws error] session=${sessionId}`, err.message);
+    });
   });
 
-  // ── Déconnexion ────────────────────────────────────────────────────────────
-
-  ws.on('close', () => {
-    session.clients.delete(ws);
-    console.log(`[disconnect] session=${sessionId} peers=${session.clients.size}`);
-    if (session.clients.size > 0) {
-      broadcast(session, { type: 'peer_left', peers: session.clients.size });
-    }
+  wss.on('error', (err) => {
+    console.error('[server error]', err);
   });
 
-  ws.on('error', (err) => {
-    console.error(`[ws error] session=${sessionId}`, err.message);
+  // ─── Teardown ─────────────────────────────────────────────────────────────────
+
+  function close() {
+    return new Promise((resolve) => {
+      for (const session of sessions.values()) {
+        clearTimeout(session.timer);
+        for (const client of session.clients) client.terminate();
+      }
+      sessions.clear();
+      wss.close(() => httpServer.close(resolve));
+    });
+  }
+
+  return { httpServer, wss, sessions, connRates, checkRateLimit, getOrCreateSession, expireSession, close };
+}
+
+// ─── Point d'entrée ───────────────────────────────────────────────────────────
+
+const isMain = process.argv[1] === new URL(import.meta.url).pathname;
+if (isMain) {
+  const PORT = process.env.PORT || 3001;
+  const app  = createApp();
+  app.httpServer.listen(PORT, () => {
+    console.log(`SSBBB server — ws://localhost:${PORT}`);
+    console.log(`Origins autorisées : ${ALLOWED_ORIGINS.join(', ')}${ALLOW_NULL_ORIGIN ? ', null (file://)' : ''}`);
+    console.log(`Rate limit : ${RATE_LIMIT_MAX} connexions/min/IP`);
+    console.log(`Sessions max : ${MAX_SESSIONS} · TTL : ${SESSION_TTL_MS / 3600000}h · Peers/session : ${MAX_PEERS}`);
   });
-});
-
-
-
-wss.on('listening', () => {
-  console.log(`SSBBB server — ws://localhost:${PORT}`);
-  console.log(`Origins autorisées : ${ALLOWED_ORIGINS.join(', ')}${ALLOW_NULL_ORIGIN ? ', null (file://)' : ''}`);
-  console.log(`Rate limit : ${RATE_LIMIT_MAX} connexions/min/IP`);
-  console.log(`Sessions max : ${MAX_SESSIONS} · TTL : ${SESSION_TTL_MS / 3600000}h · Peers/session : ${MAX_PEERS}`);
-});
-
-wss.on('error', (err) => {
-  console.error('[server error]', err);
-  process.exit(1);
-});
+}
