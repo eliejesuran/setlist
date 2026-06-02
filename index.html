@@ -115,40 +115,61 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   <div id="footer-badge2" style="color:var(--gold);font-size:10px;letter-spacing:.18em;">Date</div>
 </footer>
 <div class="overlay" id="share-ov"><div class="import-box" style="max-width:480px;">
-  <div class="import-title" style="color:#9b59b6;">🔗 Partager la session</div>
-  <div class="import-sub" id="share-status-line" style="color:var(--grey);">Génère un lien permanent pour ton groupe</div>
-  <div style="margin:12px 0 8px;">
-    <div class="sh-lbl">Nom de la session</div>
-    <input id="share-session-name" type="text" class="sh-inp" placeholder="Ex : Répét vendredi, Gig Ancienne Belgique…" style="margin-top:6px;" maxlength="40">
+  <div class="import-title" style="color:#9b59b6;">🔗 Session collaborative</div>
+  <div class="import-sub" id="share-status-line" style="color:var(--grey);">Crée ou rejoins une session pour éditer en temps réel avec ton groupe</div>
+
+  <!-- Code de session (= ID technique, choisissable) -->
+  <div style="margin:14px 0 8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div class="sh-lbl">Code de session</div>
+      <button id="btn-suggest-code" type="button" style="font-size:10px;letter-spacing:.08em;background:none;border:1px solid var(--border);color:var(--grey);padding:3px 8px;border-radius:3px;cursor:pointer;font-family:'Space Mono',monospace;">🎲 Suggérer</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <input id="share-code-input" type="text" class="sh-inp" placeholder="Ex : repet42, blues99, setlive01…"
+        style="flex:1;font-family:'Space Mono',monospace;letter-spacing:.06em;text-transform:lowercase;" maxlength="16">
+    </div>
+    <div id="share-code-rules" style="font-size:10px;color:var(--grey);margin-top:4px;letter-spacing:.04em;">
+      4 à 16 caractères · lettres (a–z) et chiffres (0–9) uniquement · pas d'espaces ni d'accents
+    </div>
+    <div id="share-code-error" style="font-size:10px;color:#e74c3c;margin-top:3px;min-height:14px;letter-spacing:.04em;"></div>
+    <!-- Code affiché en gros quand connecté -->
+    <div id="share-code-display" style="display:none;margin-top:8px;text-align:center;padding:10px 0 4px;">
+      <div style="font-size:10px;color:var(--grey);letter-spacing:.12em;margin-bottom:4px;">CODE ACTIF</div>
+      <div id="share-code-display-val" style="font-family:'Space Mono',monospace;font-size:26px;letter-spacing:.2em;color:#9b59b6;font-weight:bold;"></div>
+    </div>
   </div>
-  <div style="margin:12px 0 8px;">
+
+  <!-- Nom affiché de la session (cosmétique, partagé via WS) -->
+  <div style="margin:8px 0 8px;">
+    <div class="sh-lbl">Nom affiché <span style="font-weight:normal;opacity:.6;">(optionnel — visible par tous les membres)</span></div>
+    <input id="share-session-name" type="text" class="sh-inp" placeholder="Ex : Répét vendredi, Gig AB, Soundcheck…" style="margin-top:6px;" maxlength="40">
+  </div>
+
+  <!-- Nom du pair -->
+  <div style="margin:8px 0 8px;">
     <div class="sh-lbl">Ton nom dans la session</div>
     <input id="share-peer-name" type="text" class="sh-inp" placeholder="Ex : Guitare, Chef, Elie…" style="margin-top:6px;" maxlength="24">
   </div>
-  <div style="margin:12px 0 8px;" id="share-url-section">
-    <div class="sh-lbl">Lien de la session</div>
+
+  <!-- Lien à partager (visible seulement quand connecté) -->
+  <div style="margin:8px 0 8px;display:none;" id="share-url-section">
+    <div class="sh-lbl">Lien à partager</div>
     <div style="display:flex;gap:8px;margin-top:6px;">
-      <input id="share-url-input" readonly style="flex:1;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;padding:10px 12px;border-radius:4px;outline:none;min-width:0;" placeholder="Clique sur Créer pour générer un lien…">
+      <input id="share-url-input" readonly style="flex:1;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;padding:10px 12px;border-radius:4px;outline:none;min-width:0;">
       <button id="btn-copy-share" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;" disabled>⎘</button>
     </div>
-    <div id="share-code-display" style="display:none;margin-top:6px;font-family:'Space Mono',monospace;font-size:20px;letter-spacing:.15em;color:#9b59b6;text-align:center;padding:8px 0;"></div>
   </div>
-  <div style="margin:12px 0 8px;" id="share-join-section">
-    <div class="sh-lbl">Rejoindre par code</div>
-    <div style="display:flex;gap:8px;margin-top:6px;">
-      <input id="share-code-input" type="text" class="sh-inp" placeholder="Ex : jazz-42" style="flex:1;font-family:'Space Mono',monospace;letter-spacing:.08em;text-transform:lowercase;" maxlength="20">
-      <button id="btn-join-code" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;">Rejoindre</button>
-    </div>
-  </div>
+
   <div id="share-peers" style="font-size:10px;color:var(--white);letter-spacing:.15em;min-height:18px;margin-bottom:2px;"></div>
   <div id="share-ttl" style="font-size:10px;color:var(--white);letter-spacing:.12em;min-height:16px;margin-bottom:4px;"></div>
+
   <div class="import-btns" style="margin-top:14px;">
-    <button id="btn-share-create" class="btn-imp" type="button">🌐 Mettre en ligne</button>
+    <button id="btn-share-create" class="btn-imp" type="button">🌐 Créer / Rejoindre</button>
     <button id="btn-share-disconnect" class="btn-imp" type="button" style="background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.4);color:#e74c3c;display:none;">✕ Déconnecter</button>
     <button class="btn-cancel" id="btn-cancel-share" type="button">Fermer</button>
   </div>
   <div style="font-size:10px;color:var(--grey);margin-top:14px;line-height:1.8;">
-    Partage le lien ou le code court à tes musiciens — ils verront la setlist à jour en temps réel.<br>
+    Si le code existe déjà → tu rejoins la session existante.<br>
     Tout le monde peut modifier. L'app fonctionne aussi hors ligne sans session.
   </div>
 </div></div>
@@ -809,30 +830,51 @@ function wsUpdatePeersList(names, count){
 }
 
 function wsUpdateShareUI(){
-  const connected = ws && ws.readyState === WebSocket.OPEN;
+  const connected  = ws && ws.readyState === WebSocket.OPEN;
   const createBtn  = $('btn-share-create');
   const discBtn    = $('btn-share-disconnect');
   const statusLine = $('share-status-line');
-  const joinSec    = $('share-join-section');
+  const codeInput  = $('share-code-input');
   const codeDisp   = $('share-code-display');
+  const codeDispVal= $('share-code-display-val');
+  const urlSec     = $('share-url-section');
+  const urlInput   = $('share-url-input');
+  const suggestBtn = $('btn-suggest-code');
+  const rulesEl    = $('share-code-rules');
 
   if(createBtn) createBtn.style.display = connected ? 'none' : '';
   if(discBtn)   discBtn.style.display   = connected ? '' : 'none';
-  if(joinSec)   joinSec.style.display   = connected ? 'none' : '';
-  if(codeDisp){
-    if(connected && wsSessionId){
-      codeDisp.style.display = '';
-      codeDisp.textContent   = wsSessionId.toUpperCase();
-    } else {
-      codeDisp.style.display = 'none';
-      codeDisp.textContent   = '';
-    }
+
+  // Champ code : lecture seule quand connecté
+  if(codeInput){
+    codeInput.readOnly = connected;
+    codeInput.style.opacity = connected ? '.55' : '';
+    if(connected && wsSessionId) codeInput.value = wsSessionId;
   }
+  if(suggestBtn) suggestBtn.style.display = connected ? 'none' : '';
+  if(rulesEl)    rulesEl.style.display    = connected ? 'none' : '';
+
+  // Code affiché en grand quand connecté
+  if(codeDisp){
+    codeDisp.style.display = connected && wsSessionId ? '' : 'none';
+  }
+  if(codeDispVal && wsSessionId) codeDispVal.textContent = wsSessionId.toUpperCase();
+
+  // Lien à partager : visible seulement quand connecté
+  if(urlSec)   urlSec.style.display = connected ? '' : 'none';
+  if(urlInput && connected && wsSessionId){
+    const url = new URL(window.location.href);
+    url.searchParams.set('s', wsSessionId);
+    urlInput.value = url.toString();
+    const copyBtn = $('btn-copy-share');
+    if(copyBtn) copyBtn.disabled = false;
+  }
+
   if(statusLine) statusLine.textContent = connected
     ? `En ligne — connecté en tant que ${wsPeerName()}`
-    : 'Travaille offline ou génère un lien pour partager avec ton groupe';
+    : 'Crée ou rejoins une session pour éditer en temps réel avec ton groupe';
   const btnSave = $('btn-localsave');
-  if(btnSave) { btnSave.style.display = connected ? 'none' : ''; }
+  if(btnSave) btnSave.style.display = connected ? 'none' : '';
 
   wsUpdateTtl();
 }
@@ -929,7 +971,15 @@ function wsRandomId(){
                  'drum','keys','vibe','gig','amp','mix','tone','lick','bop','rift'];
   const word = words[Math.floor(Math.random()*words.length)];
   const num  = String(Math.floor(Math.random()*90)+10);
-  return word+'-'+num;
+  return word + num;  // ex: jazz42, blues17, rock55
+}
+
+function wsValidateCode(raw){
+  if(!raw) return 'Le code est vide';
+  if(raw.length < 4)  return 'Trop court — minimum 4 caractères';
+  if(raw.length > 16) return 'Trop long — maximum 16 caractères';
+  if(!/^[a-z0-9]+$/.test(raw)) return 'Lettres (a–z) et chiffres (0–9) uniquement — pas de tirets ni d\'espaces';
+  return null; // OK
 }
 
 // ── Bouton "Nouvelle session" (offline, setlist vide) ──
@@ -949,45 +999,43 @@ $('btn-new-session').addEventListener('click', ()=>{
 // ── Bouton Partager ──
 $('btn-share').addEventListener('click', ()=>{
   wsUpdateShareUI();
-  // Pré-remplir l'input si session déjà active
-  if(wsSessionId){
-    const url = new URL(window.location.href);
-    url.searchParams.set('s', wsSessionId);
-    const shareInput = $('share-url-input');
-    if(shareInput) shareInput.value = url.toString();
-    const copyBtn = $('btn-copy-share');
-    if(copyBtn) copyBtn.disabled = false;
-  }
   $('share-ov').classList.add('open');
 });
 
 $('btn-cancel-share').addEventListener('click', ()=> $('share-ov').classList.remove('open'));
 $('share-ov').addEventListener('click', e=>{ if(e.target===$('share-ov')) $('share-ov').classList.remove('open'); });
 
-const WS_ID_RE = /^[a-zA-Z0-9-]{4,20}$/;
+// Validation en temps réel du champ code
+$('share-code-input').addEventListener('input', ()=>{
+  const raw = $('share-code-input').value.toLowerCase();
+  $('share-code-input').value = raw; // forcer lowercase
+  const errEl = $('share-code-error');
+  if(errEl) errEl.textContent = raw ? (wsValidateCode(raw) || '') : '';
+});
+$('share-code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') wsDoConnect(); });
 
-$('btn-share-create').addEventListener('click', ()=>{
-  const shareInput = $('share-url-input');
-  let sessionId = wsSessionId;
-  if(!sessionId){
-    try {
-      const typed = new URL(shareInput?.value || '');
-      const sid = typed.searchParams.get('s');
-      if(sid && WS_ID_RE.test(sid)) sessionId = sid;
-    } catch {}
-  }
-  if(!sessionId) sessionId = wsRandomId();
-  wsConnect(sessionId);
+// Bouton suggestion
+$('btn-suggest-code').addEventListener('click', ()=>{
+  $('share-code-input').value = wsRandomId();
+  const errEl = $('share-code-error');
+  if(errEl) errEl.textContent = '';
 });
 
-function wsJoinByCode(){
+// Créer / Rejoindre
+function wsDoConnect(){
+  if(ws && ws.readyState === WebSocket.OPEN) return; // déjà connecté
   const raw = ($('share-code-input')?.value || '').trim().toLowerCase();
-  if(!raw){ showToast('Saisis un code de session', ()=>{}); return; }
-  if(!WS_ID_RE.test(raw)){ showToast('Code invalide (ex : jazz-42)', ()=>{}); return; }
+  const err = wsValidateCode(raw);
+  const errEl = $('share-code-error');
+  if(err){
+    if(errEl) errEl.textContent = err;
+    $('share-code-input').focus();
+    return;
+  }
+  if(errEl) errEl.textContent = '';
   wsConnect(raw);
 }
-$('btn-join-code').addEventListener('click', wsJoinByCode);
-$('share-code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') wsJoinByCode(); });
+$('btn-share-create').addEventListener('click', wsDoConnect);
 
 // Re-identifier quand le nom change en cours de session
 $('share-peer-name').addEventListener('input', ()=>{
@@ -996,7 +1044,7 @@ $('share-peer-name').addEventListener('input', ()=>{
   }
 });
 
-// Nom de session → patch WS dès qu'il change
+// Nom affiché de session → patch WS dès qu'il change
 $('share-session-name').addEventListener('input', wsPatch);
 
 $('btn-share-disconnect').addEventListener('click', ()=> wsDisconnect());
@@ -1017,8 +1065,9 @@ $('btn-copy-share').addEventListener('click', async ()=>{
 (()=>{
   const urlParams = new URLSearchParams(window.location.search);
   const sid = urlParams.get('s');
-  if(sid && /^[a-z0-9]{4,16}$/.test(sid)){
-    // Petit délai pour laisser le localStorage se restaurer d'abord
+  if(sid && !wsValidateCode(sid)){
+    const codeIn = $('share-code-input');
+    if(codeIn) codeIn.value = sid; // pré-remplir le champ
     setTimeout(()=> wsConnect(sid), 800);
   }
 })();
