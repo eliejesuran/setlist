@@ -97,7 +97,7 @@ function getOrCreateSession(id) {
     expireSession(oldest.id);
   }
 
-  const session = { id, state: null, clients: new Set(), expireAt: 0, timer: null };
+  const session = { id, state: null, clients: new Set(), expireAt: 0, timer: null, name: null };
   sessions.set(id, session);
   console.log(`[session] ${id} créée — ${sessions.size} session(s) actives`);
   return session;
@@ -142,8 +142,12 @@ const wss = new WebSocketServer({
   },
 });
 
+function getPeerNames(session) {
+  return [...session.clients].map(c => c._peerName || 'Anonyme');
+}
+
 wss.on('connection', (ws, req) => {
-  const match = req.url?.match(/^\/session\/([a-z0-9]{4,16})$/);
+  const match = req.url?.match(/^\/session\/([a-zA-Z0-9-]{4,20})$/);
   if (!match) {
     ws.close(1008, 'URL invalide — utilise /session/{id}');
     return;
@@ -167,12 +171,15 @@ wss.on('connection', (ws, req) => {
 
   // Envoyer l'état courant au nouveau venu
   if (session.state) {
-    send(ws, { type: 'init', sessionId, state: session.state, peers: session.clients.size });
+    send(ws, { type: 'init', sessionId, state: session.state, peers: session.clients.size,
+               names: getPeerNames(session), sessionName: session.name });
   } else {
-    send(ws, { type: 'joined', sessionId, peers: session.clients.size });
+    send(ws, { type: 'joined', sessionId, peers: session.clients.size,
+               names: getPeerNames(session), sessionName: session.name });
   }
 
-  broadcast(session, { type: 'peer_joined', peers: session.clients.size }, ws);
+  broadcast(session, { type: 'peer_joined', peers: session.clients.size,
+                       names: getPeerNames(session) }, ws);
 
   // ── Messages entrants ──────────────────────────────────────────────────────
 
@@ -195,12 +202,21 @@ wss.on('connection', (ws, req) => {
       case 'patch': {
         if (!msg.state || typeof msg.state !== 'object') break;
         session.state = msg.state;
+        if (msg.state.sessionName != null) session.name = msg.state.sessionName;
         broadcast(session, {
           type: 'patch', sessionId,
           state: session.state,
           peers: session.clients.size,
           timestamp: Date.now(),
         }, ws);
+        break;
+      }
+      case 'identify': {
+        const name = typeof msg.name === 'string' ? msg.name.trim().slice(0, 24) : '';
+        ws._peerName = name || 'Anonyme';
+        const names = getPeerNames(session);
+        broadcast(session, { type: 'peers_update', names, peers: session.clients.size });
+        send(ws,           { type: 'peers_update', names, peers: session.clients.size });
         break;
       }
       case 'ping': {
@@ -218,7 +234,8 @@ wss.on('connection', (ws, req) => {
     session.clients.delete(ws);
     console.log(`[disconnect] session=${sessionId} peers=${session.clients.size}`);
     if (session.clients.size > 0) {
-      broadcast(session, { type: 'peer_left', peers: session.clients.size });
+      broadcast(session, { type: 'peer_left', peers: session.clients.size,
+                           names: getPeerNames(session) });
     }
   });
 
