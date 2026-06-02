@@ -1,5 +1,5 @@
 # SSBBB — Setlist Tool
-**v2026-06-02d** · Elie JESURAN · GPL
+**v2026-06-02e** · Elie JESURAN · GPL
 
 ## Architecture
 `index.html` standalone (HTML/CSS/JS monofichier) · jsPDF 2.5.1 + html2canvas 1.4.1 · Google Fonts CDN  
@@ -38,7 +38,7 @@ Migration auto depuis `ssbbb_setlist_v1` au premier chargement.
 
 ## Thèmes
 Cycle `dark-gold`→`sepia`→`light-paper` · suit `prefers-color-scheme` sauf `_themeManualOverride`  
-PDF : `dark-gold` → PNG ×1.5 fond noir · `sepia`/`light-paper` → JPEG ×2 fond blanc · nom `{band}_{badges}_{mode}.pdf`
+PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thème · nom `{band}_{badges}_{mode}.pdf`
 
 ## WS Collaboration
 
@@ -47,7 +47,8 @@ PDF : `dark-gold` → PNG ×1.5 fond noir · `sepia`/`light-paper` → JPEG ×2 
 - `joined` (session vide) → `wsPatch()` pour initialiser le serveur avec l'état local
 - `init` (session existante) → `wsApplyState(state, true)` ; si distant < local → appliquer + toast undo
 - `patch` reçu → ignoré si `lastModified < _wsLastModified` (anti-ping-pong) ; différé si saisie active → appliqué au `focusout`
-- `slCreate` / `slDelete(slot actif)` → `wsDisconnect()` avant tout changement d'état (sinon broadcast état vide aux pairs)
+- `btn-new-session` → reset setlist locale (confirm + WS disconnect + toast undo 4s) — ne crée plus de slot
+- Export texte : slot artiste toujours présent (`Titre -  - 3:45 - Note`) · parser conserve slots vides internes (plus de `filter(Boolean)`)
 - `canNativeShare()` = `navigator.share` **+** touch détecté — ne pas afficher le bouton 📤 sur desktop
 
 ### Messages
@@ -75,7 +76,8 @@ PDF : `dark-gold` → PNG ×1.5 fond noir · `sepia`/`light-paper` → JPEG ×2 
 ## Backlog actif
 **Moyen** U23 Minuteur concert (chrono setlist) · U24 Import texte libre intelligent · U25 Notes globales setlist · U18 Gestion avancée sessions WS  
 **Confort** U26 Raccourcis clavier (Enter/↑↓/Del) · U27 Thème persisté localStorage · U28 Compteur titres par bloc · U29 Recherche/filtre  
-**Mineur** U30 Export CSV · U31 Swipe supprimer séparateurs
+**Mineur** U30 Export CSV · U31 Swipe supprimer séparateurs  
+**PDF** U32 Option qualité haute/basse dans le panneau Options PDF — haute : scale×2 qualité 0.95 · basse : scale×1 qualité 0.80 · checkbox `pdf-quality-high` → pilote `SCALE` et `imgQuality` dans `generatePDF()`
 
 ---
-*Màj 2 juin 2026 (d)*
+*Màj 2 juin 2026 (e)*

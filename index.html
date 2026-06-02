@@ -113,9 +113,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
         </label>
       </div>
     </div>
-    <!-- btn-new-session désactivé — multi-setlist remplacé par sessions WS
-    <button class="hbtn" id="btn-new-session" type="button" title="Nouvelle setlist offline"><span>+</span><span class="lbl">Nouveau</span></button>
-    -->
+    <button class="hbtn" id="btn-new-session" type="button" title="Remettre la setlist à zéro"><span>+</span><span class="lbl">Nouveau</span></button>
   </div>
   <input class="ef band-name-input" id="band-name" value="Mon Groupe" placeholder="Nom du groupe">
   <div class="badge-row" id="badge-row"></div>
@@ -303,7 +301,9 @@ function exportImportFormat(){
   const songs = items.map(item=>{
     if(item.type==='sep') return '---';
     const parts=[item.title||''];
-    if(item.artist)   parts.push(item.artist);
+    // Toujours inclure le slot artiste (vide si absent) dès qu'il y a une durée ou un
+    // commentaire — sinon le ré-import décale les champs (note lue comme artiste)
+    if(item.artist || item.duration || item.comment) parts.push(item.artist||'');
     if(item.duration) parts.push(item.duration);
     if(item.comment)  parts.push(item.comment);
     let line = parts.join(' - ');
@@ -469,8 +469,9 @@ function generatePDF(){return async()=>{
     const pages=tgt.firstElementChild.children;
     for(let i=0;i<pages.length;i++){
       const canvas=await html2canvas(pages[i],{scale:SCALE,backgroundColor:bg,useCORS:true,logging:false,width:AW,windowWidth:AW});
-      const imgFmt = mode==='dark' ? 'PNG' : 'JPEG'; // R4: JPEG pour light, PNG pour dark
-      const img = mode==='dark' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg',1);
+      // JPEG pour tous les modes : 10–20× plus léger que PNG, artefacts invisibles à 0.92
+      const imgFmt = 'JPEG';
+      const img = canvas.toDataURL('image/jpeg', 0.92);
       const iW=canvas.width/SCALE, iH=canvas.height/SCALE;
       const mmPx=AW_MM/iW, cHmm=iH*mmPx;
       if(i>0) doc.addPage();
@@ -540,7 +541,10 @@ function parseImport(text){
     const privIdx = core.indexOf(' &privé: ');
     if(privIdx !== -1){ privateUrl = core.slice(privIdx+9).trim(); core = core.slice(0,privIdx).trim(); }
 
-    const parts = core.split(/\s*-\s*/).map(s=>s.trim()).filter(Boolean);
+    const parts = core.split(/\s*-\s*/).map(s=>s.trim());
+    // On garde les slots vides internes (ils préservent les positions artiste/dur)
+    // mais on coupe les vides en queue
+    while(parts.length && parts[parts.length-1]==='') parts.pop();
     const durIdx = parts.findIndex(p=>/^\d+:\d{2}$/.test(p));
     const duration = durIdx !== -1 ? parts[durIdx] : '0:00';
     const songParts = durIdx !== -1 ? parts.filter((_,i)=>i!==durIdx) : parts;
@@ -1181,6 +1185,23 @@ $('btn-sl-new').addEventListener('click', ()=>{
   $('setlists-ov').classList.remove('open');
 });
 ────────────────────────────────────────────────────────────────────────── */
+
+// ── Bouton Nouveau (reset setlist locale) ──
+$('btn-new-session').addEventListener('click', ()=>{
+  if(!confirm('Remettre la setlist à zéro ?')) return;
+  if(ws&&ws.readyState===WebSocket.OPEN) wsDisconnect();
+  const prev = captureState();
+  items=[]; headerBadges=[{id:'hb'+nextBadgeId++,label:'Mon groupe'},{id:'hb'+nextBadgeId++,label:'Date'}];
+  $('band-name').value='Mon Groupe'; $('footer-venue').value='';
+  const sn=$('share-session-name'); if(sn) sn.value='';
+  _undoStack=[]; updateUndoBtn();
+  renderBadges(); renderList(); syncFooter(); lsSave();
+  showToast('Setlist remise à zéro', ()=>{
+    items=prev.items; headerBadges=prev.headerBadges;
+    $('band-name').value=prev.bandName; $('footer-venue').value=prev.footerVenue;
+    renderBadges(); renderList(); syncFooter(); lsSave();
+  });
+});
 
 // ── Bouton Undo ──
 $('btn-undo').addEventListener('click', undoLast);
