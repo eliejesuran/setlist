@@ -118,14 +118,26 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   <div class="import-title" style="color:#9b59b6;">🔗 Partager la session</div>
   <div class="import-sub" id="share-status-line" style="color:var(--grey);">Génère un lien permanent pour ton groupe</div>
   <div style="margin:12px 0 8px;">
+    <div class="sh-lbl">Nom de la session</div>
+    <input id="share-session-name" type="text" class="sh-inp" placeholder="Ex : Répét vendredi, Gig Ancienne Belgique…" style="margin-top:6px;" maxlength="40">
+  </div>
+  <div style="margin:12px 0 8px;">
     <div class="sh-lbl">Ton nom dans la session</div>
     <input id="share-peer-name" type="text" class="sh-inp" placeholder="Ex : Guitare, Chef, Elie…" style="margin-top:6px;" maxlength="24">
   </div>
-  <div style="margin:12px 0 8px;">
+  <div style="margin:12px 0 8px;" id="share-url-section">
     <div class="sh-lbl">Lien de la session</div>
     <div style="display:flex;gap:8px;margin-top:6px;">
       <input id="share-url-input" readonly style="flex:1;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;padding:10px 12px;border-radius:4px;outline:none;min-width:0;" placeholder="Clique sur Créer pour générer un lien…">
       <button id="btn-copy-share" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;" disabled>⎘</button>
+    </div>
+    <div id="share-code-display" style="display:none;margin-top:6px;font-family:'Space Mono',monospace;font-size:20px;letter-spacing:.15em;color:#9b59b6;text-align:center;padding:8px 0;"></div>
+  </div>
+  <div style="margin:12px 0 8px;" id="share-join-section">
+    <div class="sh-lbl">Rejoindre par code</div>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <input id="share-code-input" type="text" class="sh-inp" placeholder="Ex : jazz-42" style="flex:1;font-family:'Space Mono',monospace;letter-spacing:.08em;text-transform:lowercase;" maxlength="20">
+      <button id="btn-join-code" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;">Rejoindre</button>
     </div>
   </div>
   <div id="share-peers" style="font-size:10px;color:var(--white);letter-spacing:.15em;min-height:18px;margin-bottom:2px;"></div>
@@ -136,7 +148,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
     <button class="btn-cancel" id="btn-cancel-share" type="button">Fermer</button>
   </div>
   <div style="font-size:10px;color:var(--grey);margin-top:14px;line-height:1.8;">
-    Partage le lien à tes musiciens — ils verront la setlist à jour en temps réel.<br>
+    Partage le lien ou le code court à tes musiciens — ils verront la setlist à jour en temps réel.<br>
     Tout le monde peut modifier. L'app fonctionne aussi hors ligne sans session.
   </div>
 </div></div>
@@ -249,7 +261,7 @@ function buildPdfHtml(mode){
   const CMT_CLR  =isLight?'#333333':'#f6e7b8';
 
   const bn  =$('band-name').value||'SETLIST';
-  const date=(headerBadges[1]||{label:''}).label;
+  const date=(headerBadges.length>1 ? headerBadges[headerBadges.length-1] : headerBadges[0]||{label:''}).label;
   const venue=$('footer-venue').value;
   const b1  =(headerBadges[0]||{label:''}).label;
 
@@ -378,7 +390,8 @@ function generatePDF(){return async()=>{
     await document.fonts.ready;
     await new Promise(r=>setTimeout(r,400));
     const {jsPDF}=window.jspdf;
-    const slugPDF=headerBadges.slice(0,3).map(b=>b.label.replace(/[^a-z0-9]/gi,'_')).join('_');
+    const slugBand=($('band-name').value||'').replace(/[^a-z0-9]/gi,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+    const slugPDF=(slugBand?slugBand+'_':'')+headerBadges.slice(0,3).map(b=>b.label.replace(/[^a-z0-9]/gi,'_')).join('_');
     const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const pages=tgt.firstElementChild.children;
     for(let i=0;i<pages.length;i++){
@@ -538,7 +551,8 @@ $('band-name').addEventListener('input',syncFooter);
 function syncFooter(){
   const bn=$('band-name').value||'SETLIST';
   const b1=(headerBadges[0]||{label:''}).label;
-  const b2=(headerBadges[1]||{label:''}).label;
+  const last=headerBadges.length>1 ? headerBadges[headerBadges.length-1] : null;
+  const b2=(last||{label:''}).label;
   $('band-title').textContent=bn.toUpperCase()+(b1?' \u2022 '+b1.toUpperCase():'');
   const dd=$('footer-badge2'); if(dd) dd.textContent=b2;
 }
@@ -688,8 +702,9 @@ function wsGetState(){
   return {
     items,
     headerBadges,
-    bandName:    $('band-name').value,
-    footerVenue: $('footer-venue').value,
+    bandName:     $('band-name').value,
+    footerVenue:  $('footer-venue').value,
+    sessionName:  $('share-session-name')?.value || '',
     lastModified: _wsLastModified,
   };
 }
@@ -749,6 +764,7 @@ function _doApplyState(state){
   }
   if(state.bandName)     $('band-name').value    = state.bandName;
   if(state.footerVenue)  $('footer-venue').value = state.footerVenue;
+  if(state.sessionName != null){ const sn=$('share-session-name'); if(sn) sn.value=state.sessionName; }
   if(state.lastModified) _wsLastModified = state.lastModified;
   renderBadges(true);
   renderList();
@@ -778,20 +794,46 @@ function wsUpdateTtl(){
   el.textContent = `Session expire dans ${h}h${String(m).padStart(2,'0')}`;
 }
 
+function wsUpdatePeersList(names, count){
+  const el = $('share-peers');
+  if(!el) return;
+  if(names && names.length){
+    el.textContent = names.length === 1
+      ? `1 membre connecté : ${names[0]}`
+      : `${names.length} membres connectés : ${names.join(', ')}`;
+  } else if(count != null){
+    el.textContent = count > 1 ? `${count} membres connectés` : '1 membre connecté (toi)';
+  } else {
+    el.textContent = '';
+  }
+}
+
 function wsUpdateShareUI(){
   const connected = ws && ws.readyState === WebSocket.OPEN;
-  const createBtn = $('btn-share-create');
-  const discBtn   = $('btn-share-disconnect');
+  const createBtn  = $('btn-share-create');
+  const discBtn    = $('btn-share-disconnect');
   const statusLine = $('share-status-line');
+  const joinSec    = $('share-join-section');
+  const codeDisp   = $('share-code-display');
+
   if(createBtn) createBtn.style.display = connected ? 'none' : '';
   if(discBtn)   discBtn.style.display   = connected ? '' : 'none';
+  if(joinSec)   joinSec.style.display   = connected ? 'none' : '';
+  if(codeDisp){
+    if(connected && wsSessionId){
+      codeDisp.style.display = '';
+      codeDisp.textContent   = wsSessionId.toUpperCase();
+    } else {
+      codeDisp.style.display = 'none';
+      codeDisp.textContent   = '';
+    }
+  }
   if(statusLine) statusLine.textContent = connected
-    ? `En ligne — session ${wsSessionId} — connecté en tant que ${wsPeerName()}`
+    ? `En ligne — connecté en tant que ${wsPeerName()}`
     : 'Travaille offline ou génère un lien pour partager avec ton groupe';
   const btnSave = $('btn-localsave');
   if(btnSave) { btnSave.style.display = connected ? 'none' : ''; }
 
-  // U14 : TTL de la session
   wsUpdateTtl();
 }
 
@@ -807,6 +849,8 @@ function wsConnect(sessionId){
     _wsReconnectDelay = 2000; // reset backoff à la connexion réussie
     wsIndicator('on');
     wsUpdateShareUI();
+    // Annoncer notre nom aux pairs
+    ws.send(JSON.stringify({ type: 'identify', name: wsPeerName() }));
     // Ne PAS envoyer wsPatch() ici : si le serveur a déjà un état (init à venir),
     // on l'écraserait avec notre état local avant même de le recevoir (B10 / ping-pong).
     // Mettre à jour l'URL du navigateur sans recharger
@@ -831,13 +875,13 @@ function wsConnect(sessionId){
       // Session vide — on est le premier : pousser notre état local
       wsPatch();
     }
-    if(msg.type === 'peer_joined' || msg.type === 'peer_left' || msg.type === 'init' || msg.type === 'joined'){
-      const peersEl = $('share-peers');
-      if(peersEl && msg.peers != null){
-        peersEl.textContent = msg.peers > 1
-          ? `${msg.peers} membres connectés`
-          : '1 membre connecté (toi)';
-      }
+    if(msg.type === 'init' || msg.type === 'joined'){
+      // Nom de session envoyé par le serveur au moment du join
+      if(msg.sessionName){ const sn=$('share-session-name'); if(sn && !sn.value) sn.value=msg.sessionName; }
+    }
+    if(msg.type === 'peers_update' || msg.type === 'peer_joined' || msg.type === 'peer_left'
+       || msg.type === 'init' || msg.type === 'joined'){
+      wsUpdatePeersList(msg.names, msg.peers);
     }
     if(msg.type === 'session_expired'){
       wsDisconnect();
@@ -881,10 +925,11 @@ function wsDisconnect(){
 }
 
 function wsRandomId(){
-  const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
-  let id = '';
-  for(let i=0;i<8;i++) id += chars[Math.floor(Math.random()*chars.length)];
-  return id;
+  const words = ['jazz','blues','rock','soul','funk','bass','beat','riff','tune','loop',
+                 'drum','keys','vibe','gig','amp','mix','tone','lick','bop','rift'];
+  const word = words[Math.floor(Math.random()*words.length)];
+  const num  = String(Math.floor(Math.random()*90)+10);
+  return word+'-'+num;
 }
 
 // ── Bouton "Nouvelle session" (offline, setlist vide) ──
@@ -919,20 +964,40 @@ $('btn-share').addEventListener('click', ()=>{
 $('btn-cancel-share').addEventListener('click', ()=> $('share-ov').classList.remove('open'));
 $('share-ov').addEventListener('click', e=>{ if(e.target===$('share-ov')) $('share-ov').classList.remove('open'); });
 
+const WS_ID_RE = /^[a-zA-Z0-9-]{4,20}$/;
+
 $('btn-share-create').addEventListener('click', ()=>{
   const shareInput = $('share-url-input');
   let sessionId = wsSessionId;
   if(!sessionId){
-    // Vérifier si l'utilisateur a collé une URL avec ?s=
     try {
       const typed = new URL(shareInput?.value || '');
       const sid = typed.searchParams.get('s');
-      if(sid && /^[a-z0-9]{4,16}$/.test(sid)) sessionId = sid;
+      if(sid && WS_ID_RE.test(sid)) sessionId = sid;
     } catch {}
   }
   if(!sessionId) sessionId = wsRandomId();
   wsConnect(sessionId);
 });
+
+function wsJoinByCode(){
+  const raw = ($('share-code-input')?.value || '').trim().toLowerCase();
+  if(!raw){ showToast('Saisis un code de session', ()=>{}); return; }
+  if(!WS_ID_RE.test(raw)){ showToast('Code invalide (ex : jazz-42)', ()=>{}); return; }
+  wsConnect(raw);
+}
+$('btn-join-code').addEventListener('click', wsJoinByCode);
+$('share-code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') wsJoinByCode(); });
+
+// Re-identifier quand le nom change en cours de session
+$('share-peer-name').addEventListener('input', ()=>{
+  if(ws && ws.readyState === WebSocket.OPEN){
+    ws.send(JSON.stringify({ type: 'identify', name: wsPeerName() }));
+  }
+});
+
+// Nom de session → patch WS dès qu'il change
+$('share-session-name').addEventListener('input', wsPatch);
 
 $('btn-share-disconnect').addEventListener('click', ()=> wsDisconnect());
 
