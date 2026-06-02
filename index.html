@@ -72,12 +72,13 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
 .row-song{position:relative;overflow:hidden}
 .swipe-del-bg{position:absolute;right:0;top:0;bottom:0;width:80px;background:#c0392b;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;pointer-events:none;opacity:0;transition:opacity .15s}
 .row-song.swipe-active .swipe-del-bg{opacity:1}
-/* Setlists overlay */
+/* Setlists overlay — désactivé (remplacé par sessions WS)
 .sl-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:4px;margin-bottom:6px;cursor:pointer;background:var(--card);transition:border-color .15s}
 .sl-item:hover{border-color:var(--gold-dim)}.sl-item.sl-active{border-color:var(--gold);background:rgba(200,168,75,.06)}
 .sl-name{flex:1;font-family:'Space Mono',monospace;font-size:12px;color:var(--white);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-meta{font-size:10px;color:var(--grey);letter-spacing:.08em;flex-shrink:0}
 .sl-del{background:none;border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer;border-radius:2px;padding:2px 7px;flex-shrink:0}.sl-del:hover{border-color:#e74c3c;color:#e74c3c}
+*/
 /* Undo button disabled */
 #btn-undo:disabled{opacity:.35;cursor:default}
 </style>
@@ -112,14 +113,18 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
         </label>
       </div>
     </div>
+    <!-- btn-new-session désactivé — multi-setlist remplacé par sessions WS
     <button class="hbtn" id="btn-new-session" type="button" title="Nouvelle setlist offline"><span>+</span><span class="lbl">Nouveau</span></button>
+    -->
   </div>
   <input class="ef band-name-input" id="band-name" value="Mon Groupe" placeholder="Nom du groupe">
   <div class="badge-row" id="badge-row"></div>
 </header>
 <div class="toolbar">
   <button class="tbtn pdf" id="btn-pdf" type="button"><span>⬇</span><span class="lbl">PDF</span></button>
+  <!-- btn-setlists désactivé — multi-setlist remplacé par sessions WS
   <button class="tbtn" id="btn-setlists" type="button" title="Gérer les setlists sauvegardées"><span>📚</span><span class="lbl">Setlists</span></button>
+  -->
   <button class="tbtn" id="btn-localsave" type="button" style="border-color:rgba(39,174,96,.4);color:#58d68d;background:rgba(39,174,96,.05);" title="Sauvegarde dans le navigateur — persiste sans télécharger"><span>&#128204;</span><span class="lbl" id="localsave-lbl">Sauvegarde auto</span></button>
   <button class="tbtn imp" id="btn-texte" type="button"><span>📋</span><span class="lbl">Texte</span></button>
   <button class="tbtn" id="btn-share" type="button" style="border-color:rgba(155,89,182,.5);color:#9b59b6;background:rgba(155,89,182,.06);"><span>🔗</span><span class="lbl" id="share-btn-lbl">Partager</span></button>
@@ -196,6 +201,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
     Tout le monde peut modifier. L'app fonctionne aussi hors ligne sans session.
   </div>
 </div></div>
+<!-- overlay setlists désactivé — multi-setlist remplacé par sessions WS
 <div class="overlay" id="setlists-ov"><div class="import-box" style="max-width:460px;">
   <div class="import-title">📚 Mes setlists</div>
   <div id="sl-list" style="margin:14px 0;max-height:320px;overflow-y:auto;"></div>
@@ -204,6 +210,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
     <button class="btn-cancel" id="btn-sl-close" type="button">Fermer</button>
   </div>
 </div></div>
+-->
 <div class="overlay" id="texte-ov"><div class="import-box"><div class="import-title">📋 Texte</div><div class="import-sub">Export de la setlist — modifie et applique pour importer</div><textarea class="import-ta" id="texte-ta" placeholder="La setlist apparaîtra ici…"></textarea><div class="import-hint">Formats : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note</code><br>Ligne vide ou <code>---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-copy-texte" type="button">⎘ Copier</button><button class="btn-imp" id="btn-apply-texte" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Appliquer</button><button class="btn-cancel" id="btn-cancel-texte" type="button">Fermer</button></div></div></div>
 <div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-header"><div class="sheet-ttl" id="sh-name">—</div><button class="sheet-close-top" id="sh-close" type="button" title="Fermer">✕</button></div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><div class="sh-lbl">🔗 Lien privé <span style="font-weight:normal;opacity:.6">(non imprimé)</span></div><input type="url" class="sh-inp" id="sh-private-url" placeholder="https://youtu.be/…"><div class="sh-lbl">📝 Note privée <span style="font-weight:normal;opacity:.6">(non imprimée)</span></div><textarea class="sh-inp" id="sh-private-note" placeholder="Accord de départ, arrangements, remarques…" style="resize:vertical;min-height:72px;line-height:1.5;font-family:'Space Mono',monospace;font-size:12px;"></textarea></div></div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo" type="button">Annuler</button></div>
@@ -724,6 +731,7 @@ function lsClear(){
   if(slot){slot.items=[];slot.headerBadges=[{id:'hb1',label:'Mon groupe'},{id:'hb2',label:'Date'}];slot.bandName='Mon Groupe';slot.footerVenue='';slot.savedAt=new Date().toISOString();_slPersist(store);}
   updateSaveStatus('Sauvegarde effacée');
 }
+/* ── Multi-setlist désactivé — remplacé par sessions WS ──────────────────
 function slCreate(name){
   if(ws&&ws.readyState===WebSocket.OPEN){if(!confirm('Créer une setlist va déconnecter la session WS. Continuer ?'))return; wsDisconnect();}
   clearTimeout(lsTimer);
@@ -744,7 +752,6 @@ function slCreate(name){
 function slSwitch(id){
   if(id===_currentSlotId)return;
   if(ws&&ws.readyState===WebSocket.OPEN){if(!confirm('Déconnecter la session WS pour changer de setlist ?'))return; wsDisconnect();}
-  // Annuler l'autosave en attente avant de sauvegarder explicitement
   clearTimeout(lsTimer);
   lsSave();
   const store = slGetAll();
@@ -783,7 +790,6 @@ function slRename(id, name){
     slot.name = name;
     slot.sessionName = name;
     _slPersist(store);
-    // Si c'est le slot actif, mettre à jour share-session-name en live
     if(id === _currentSlotId){
       const sn = $('share-session-name');
       if(sn) sn.value = name;
@@ -813,6 +819,7 @@ function slRenderList(){
     el.appendChild(d);
   });
 }
+────────────────────────────────────────────────────────────────────────── */
 
 function showSaveFlash(){
   const btn = $('btn-localsave');
@@ -1155,17 +1162,12 @@ function wsValidateCode(raw){
   return null; // OK
 }
 
-// ── Bouton "Nouvelle session" (offline, setlist vide) ──
+/* ── Listeners multi-setlist désactivés — remplacés par sessions WS ───────
 $('btn-new-session').addEventListener('click', ()=>{
   const name = prompt('Nom de la nouvelle setlist ?', 'Nouvelle setlist');
   if(name === null) return;
   slCreate(name.trim() || 'Nouvelle setlist');
 });
-
-// ── Bouton Undo ──
-$('btn-undo').addEventListener('click', undoLast);
-
-// ── Bouton Setlists ──
 $('btn-setlists').addEventListener('click', ()=>{
   slRenderList();
   $('setlists-ov').classList.add('open');
@@ -1178,6 +1180,10 @@ $('btn-sl-new').addEventListener('click', ()=>{
   slCreate(name.trim() || 'Nouvelle setlist');
   $('setlists-ov').classList.remove('open');
 });
+────────────────────────────────────────────────────────────────────────── */
+
+// ── Bouton Undo ──
+$('btn-undo').addEventListener('click', undoLast);
 
 // ── Bouton Partager ──
 $('btn-share').addEventListener('click', ()=>{

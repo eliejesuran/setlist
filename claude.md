@@ -32,7 +32,9 @@ SetlistSlot: {id, name, items, headerBadges, bandName, footerVenue, sessionName,
 
 ## localStorage
 `ssbbb_setlists_v2` → `{current: id, setlists: SetlistSlot[]}` · autosave debounce 3s  
-Migration auto depuis `ssbbb_setlist_v1` au premier chargement.
+Migration auto depuis `ssbbb_setlist_v1` au premier chargement.  
+**Multi-setlist commenté** — `slCreate/slSwitch/slDelete/slRename/slRenderList` + boutons toolbar/overlay hors service.  
+`slGetAll()` / `lsSave()` / `lsLoad()` restent actifs (slot unique courant).
 
 ## Thèmes
 Cycle `dark-gold`→`sepia`→`light-paper` · suit `prefers-color-scheme` sauf `_themeManualOverride`  
@@ -63,7 +65,7 @@ PDF : `dark-gold` → PNG ×1.5 fond noir · `sepia`/`light-paper` → JPEG ×2 
 **Rendu** `renderList()` · `renderBadges(skipPatch?)` · `makeSong(song,num)` · `makeSep(sep,idx)` · `syncFooter()`  
 **Données** `addSong(d)` · `addSep(lbl)` · `parseDur(s)` · `fmtDur(s)` · `updateTotals()` · `subBefore(idx)` · `refreshSubs()`  
 **Undo** `pushUndo()` · `undoLast()` · `captureState()`  
-**Storage** `lsSave()` · `lsLoad()` · `slGetAll()` · `slSwitch(id)` · `slCreate(name)` · `slDelete(id)` · `slRename(id,name)` · `slRenderList()`  
+**Storage** `lsSave()` · `lsLoad()` · `slGetAll()` · ~~`slSwitch`~~ · ~~`slCreate`~~ · ~~`slDelete`~~ · ~~`slRename`~~ · ~~`slRenderList`~~ (commentés)  
 **PDF** `buildPdfHtml(mode)` · `generatePDF()`  
 **Import/Export texte** `exportImportFormat()` · `parseImport(text)`  
 **Sheet mobile** `openSheet(song)` · `closeSheet()`  
