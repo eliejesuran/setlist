@@ -8,6 +8,10 @@
 <meta name="licence" content="GPL">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Setlist</title>
+<link rel="icon" type="image/x-icon"       href="favicon_io/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180"    href="favicon_io/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -589,6 +593,7 @@ const THEME_NEXT  = {'dark-gold':'sepia','sepia':'light-paper','light-paper':'da
 const THEME_ICON  = {'dark-gold':'📜','sepia':'☀','light-paper':'🌙'};
 const THEME_LBL   = {'dark-gold':'Sépia','sepia':'Light','light-paper':'Dark'};
 let currentTheme='sepia';
+let _themeManualOverride = false; // true dès que l'utilisateur toggle manuellement
 
 function applyTheme(key){
   const t=THEMES[key]; if(!t) return; currentTheme=key;
@@ -602,10 +607,16 @@ function applyTheme(key){
   const lbl  = $('theme-lbl');  if(lbl)  lbl.textContent  = THEME_LBL[key];
 }
 
-// Toggle Dark → Sépia → Light → Dark
+// Toggle Dark → Sépia → Light → Dark (marque un choix manuel)
 document.getElementById('btn-theme-toggle').addEventListener('click',()=>{
+  _themeManualOverride = true;
   applyTheme(THEME_NEXT[currentTheme]);
 });
+
+// U20 : suit le thème OS (dark/light) sauf si l'utilisateur a choisi manuellement
+const _mql = window.matchMedia('(prefers-color-scheme: dark)');
+function _applyOsTheme(dark){ if(!_themeManualOverride) applyTheme(dark ? 'dark-gold' : 'sepia'); }
+_mql.addEventListener('change', e => _applyOsTheme(e.matches));
 
 /* ══ LOCALSTORAGE SAVE / RESTORE ══ */
 const LS_KEY = 'ssbbb_setlist_v1';
@@ -699,6 +710,8 @@ let wsSuppressPatch = false;
 let _wsReconnectDelay = 2000; // backoff exponentiel : 2s → 4s → 8s → max 30s
 let _wsLastModified = Date.now(); // horodatage live de la dernière modif locale
 let _wsPendingState = null;       // patch reçu en attente (si saisie active)
+let _wsKnownNames   = [];         // dernière liste de noms pairs connue (optimiste)
+let _wsMyLastSentName = '';       // dernier nom qu'on a envoyé via identify
 
 function wsPeerName(){
   return ($('share-peer-name')?.value.trim()) || 'Anonyme';
@@ -816,12 +829,14 @@ function wsUpdateTtl(){
 }
 
 function wsUpdatePeersList(names, count){
+  if(names && names.length) _wsKnownNames = [...names];
   const el = $('share-peers');
   if(!el) return;
-  if(names && names.length){
-    el.textContent = names.length === 1
-      ? `1 membre connecté : ${names[0]}`
-      : `${names.length} membres connectés : ${names.join(', ')}`;
+  const list = _wsKnownNames.length ? _wsKnownNames : null;
+  if(list && list.length){
+    el.textContent = list.length === 1
+      ? `1 membre connecté : ${list[0]}`
+      : `${list.length} membres connectés : ${list.join(', ')}`;
   } else if(count != null){
     el.textContent = count > 1 ? `${count} membres connectés` : '1 membre connecté (toi)';
   } else {
@@ -892,7 +907,8 @@ function wsConnect(sessionId){
     wsIndicator('on');
     wsUpdateShareUI();
     // Annoncer notre nom aux pairs
-    ws.send(JSON.stringify({ type: 'identify', name: wsPeerName() }));
+    _wsMyLastSentName = wsPeerName();
+    ws.send(JSON.stringify({ type: 'identify', name: _wsMyLastSentName }));
     // Ne PAS envoyer wsPatch() ici : si le serveur a déjà un état (init à venir),
     // on l'écraserait avec notre état local avant même de le recevoir (B10 / ping-pong).
     // Mettre à jour l'URL du navigateur sans recharger
@@ -962,6 +978,8 @@ function wsDisconnect(){
   if(shareInput) shareInput.value = '';
   const copyBtn = $('btn-copy-share');
   if(copyBtn) copyBtn.disabled = true;
+  _wsKnownNames = [];
+  _wsMyLastSentName = '';
   const peersEl = $('share-peers');
   if(peersEl) peersEl.textContent = '';
 }
@@ -1037,11 +1055,24 @@ function wsDoConnect(){
 }
 $('btn-share-create').addEventListener('click', wsDoConnect);
 
-// Re-identifier quand le nom change en cours de session
+// Re-identifier quand le nom change en cours de session + mise à jour optimiste locale
 $('share-peer-name').addEventListener('input', ()=>{
+  const newName = wsPeerName();
   if(ws && ws.readyState === WebSocket.OPEN){
-    ws.send(JSON.stringify({ type: 'identify', name: wsPeerName() }));
+    ws.send(JSON.stringify({ type: 'identify', name: newName }));
   }
+  // Mise à jour optimiste : remplacer notre ancienne entrée dans _wsKnownNames
+  // (le serveur confirmera via peers_update dès qu'il est redéployé)
+  if(_wsKnownNames.length){
+    const idx = _wsMyLastSentName
+      ? _wsKnownNames.indexOf(_wsMyLastSentName)
+      : _wsKnownNames.indexOf('Anonyme');
+    if(idx !== -1) _wsKnownNames[idx] = newName;
+    else _wsKnownNames[0] = newName; // fallback
+    wsUpdatePeersList(null, null);
+  }
+  _wsMyLastSentName = newName;
+  wsUpdateShareUI();
 });
 
 // Nom affiché de session → patch WS dès qu'il change
@@ -1091,7 +1122,7 @@ document.addEventListener('focusout', ()=>{
   }
 });
 
-applyTheme('sepia');renderBadges(); renderList(); syncFooter();
+_applyOsTheme(_mql.matches); renderBadges(); renderList(); syncFooter();
 </script>
 </body>
 </html>

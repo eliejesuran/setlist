@@ -17,7 +17,9 @@
 | `wsSuppressPatch` | bool | Verrou anti-boucle patch |
 | `_wsLastModified` | number | Timestamp live de la dernière modif locale (ms) |
 | `_wsPendingState` | object\|null | Patch reçu mis en attente pendant la saisie active |
-| `WS_ID_RE` | RegExp | Regex de validation d'ID de session `[a-zA-Z0-9-]{4,20}` |
+| `_wsKnownNames` | string[] | Dernière liste de noms pairs (mise à jour optimiste) |
+| `_wsMyLastSentName` | string | Dernier nom envoyé via `identify` (pour mise à jour optimiste) |
+| `_themeManualOverride` | bool | `true` si l'utilisateur a toggleé le thème manuellement |
 
 ## Structures données
 ```js
@@ -38,7 +40,7 @@ Sep:  {type:'sep',  id:'sep43', label}
 | 7 | Mobile | <640px : sheet (6 champs), boutons ▲▼, pas d'artiste/comment inline |
 | 8 | WS collab | patch = état complet + `lastModified` + `sessionName`, reconnexion backoff 2→30s, TTL 8h, indicateur couleur toolbar |
 | 9 | Champs privés | privateUrl (icône 🔗 dans liste) + privateNote via sheet |
-| 10 | Codes courts | ID lisibles type `jazz-42` générés par `wsRandomId()` |
+| 10 | Codes courts | ID lisibles type `jazz42` générés par `wsRandomId()` (format `[a-z0-9]{4,16}`) |
 | 11 | Membres connectés | Noms affichés via `identify`/`peers_update` dans l'overlay partage |
 | 12 | Nom de session | Champ partagé via patch WS (`sessionName`), stocké côté serveur |
 
@@ -66,8 +68,7 @@ Sep:  {type:'sep',  id:'sep43', label}
 | `ping/pong` | c↔s | heartbeat |
 
 ## PDF
-- Nommage : `setlist_{slugBadges}_{mode}.pdf`
-- ⚠️ R3 : `buildPdfHtml` utilise `headerBadges[0]` et `[1]` en dur
+- Nommage : `{band}_{slugBadges}_{mode}.pdf`
 - `dark-gold` → dark (fond noir, PNG ×1.5) · `sepia`/`light-paper` → light (fond blanc, JPEG ×2)
 
 ## localStorage payload
@@ -91,8 +92,9 @@ Sep:  {type:'sep',  id:'sep43', label}
 | `wsPatch()` / `wsApplyState(state,isInit?)` | Sync état WS (met à jour `_wsLastModified`) |
 | `_doApplyState(state)` | Application effective d'un état distant (appelé par `wsApplyState`) |
 | `wsUpdatePeersList(names,count)` | Met à jour l'affichage des membres connectés |
-| `wsJoinByCode()` | Rejoindre une session par code court saisi manuellement |
-| `wsRandomId()` | Génère un code lisible type `jazz-42` |
+| `wsDoConnect()` | Valide le code saisi et lance `wsConnect()` |
+| `wsValidateCode(raw)` | Valide un code de session, retourne message d'erreur ou `null` |
+| `wsRandomId()` | Génère un code lisible type `jazz42` |
 | `wsUpdateTtl()` / `wsUpdateShareUI()` | UI session |
 
 ---
@@ -104,8 +106,13 @@ Sep:  {type:'sep',  id:'sep43', label}
 
 ### 🟡 UX
 - **U18** — Gestion des sessions (suppression, quota)
+- **U22** — PWA installable : `manifest.json` + `standalone` + icônes `android-chrome-*` déjà présentes dans `favicon_io/`. Pas de Service Worker (offline non requis).
+
 
 ### ✅ Livrés
+- **B11** — ~~Nom 'Anonyme' non remplacé~~ → mise à jour optimiste via `_wsKnownNames` + `_wsMyLastSentName`
+- **U20** — ~~Thème OS~~ → `prefers-color-scheme` au chargement + listener ; priorité au toggle manuel
+- **U21** — ~~Favicon~~ → `favicon_io/` · `.ico` + `32x32` + `16x16` + `apple-touch-icon`
 - **U17** — ~~Liste des membres connectés~~ → `identify`/`peers_update`, noms affichés dans l'overlay
 - **U19** — ~~Rejoindre par code + nommer la session~~ → codes `jazz-42`, champ nom partagé via WS
 - **M2** — ~~Nom du groupe absent du slug PDF~~ → `{band}_{badges}_{mode}.pdf`
@@ -115,4 +122,4 @@ Sep:  {type:'sep',  id:'sep43', label}
 - **B-ping-pong** — ~~Deux sessions s'écrasent mutuellement~~ → patches plus vieux ignorés ; patches différés pendant saisie active
 
 ---
-*Màj 2 juin 2026 (b)*
+*Màj 2 juin 2026 (c)*
