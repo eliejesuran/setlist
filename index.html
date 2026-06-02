@@ -662,6 +662,8 @@ let ws = null;
 let wsSessionId = null;
 let wsSuppressPatch = false;
 let _wsReconnectDelay = 2000; // backoff exponentiel : 2s → 4s → 8s → max 30s
+let _wsLastModified = Date.now(); // horodatage live de la dernière modif locale
+let _wsPendingState = null;       // patch reçu en attente (si saisie active)
 
 function wsPeerName(){
   return ($('share-peer-name')?.value.trim()) || 'Anonyme';
@@ -683,42 +685,49 @@ function wsIndicator(state){
 }
 
 function wsGetState(){
-  let savedAt = null;
-  try { const r=localStorage.getItem(LS_KEY); if(r) savedAt=JSON.parse(r).savedAt; } catch{}
   return {
     items,
     headerBadges,
     bandName:    $('band-name').value,
     footerVenue: $('footer-venue').value,
-    savedAt,
+    lastModified: _wsLastModified,
   };
 }
 
 function wsApplyState(state, isInit=false){
   if(!state) return;
-  // B8 : à la reconnexion seulement, si la version locale est plus récente,
-  // on applique quand même l'état distant mais on propose un undo via toast
-  if(isInit && !wsSuppressPatch && state.savedAt){
-    const localRaw = localStorage.getItem(LS_KEY);
-    if(localRaw){
-      try{
-        const local = JSON.parse(localRaw);
-        if(local.savedAt && local.savedAt > state.savedAt){
-          const snapshot = {items:[...items], headerBadges:[...headerBadges],
-            band:$('band-name').value, venue:$('footer-venue').value};
-          // on applique l'état distant, puis on laisse l'utilisateur annuler
-          _doApplyState(state);
-          showToast('Version distante chargée — tes modifs locales ont été remplacées', ()=>{
-            items=snapshot.items; headerBadges=snapshot.headerBadges;
-            $('band-name').value=snapshot.band; $('footer-venue').value=snapshot.venue;
-            renderBadges(); renderList(); syncFooter(); wsPatch();
-          });
-          return;
-        }
-      }catch{}
-    }
+
+  // Pour un patch live (pas init), ignorer si le state entrant est plus vieux que le local.
+  // Cela casse la boucle de ping-pong quand les deux clients s'écrasent mutuellement.
+  if(!isInit && state.lastModified && state.lastModified < _wsLastModified){
+    return;
   }
-  
+
+  // Si l'utilisateur est en train de saisir, mettre le patch en attente
+  // plutôt que de lui arracher le clavier.
+  const activeEl = document.activeElement;
+  const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+  if(isTyping && !isInit){
+    _wsPendingState = state;
+    return;
+  }
+
+  // À la reconnexion (init) : si la version locale est plus récente,
+  // appliquer quand même l'état distant mais proposer un undo via toast.
+  if(isInit && state.lastModified && state.lastModified < _wsLastModified){
+    const snapshot = {items:[...items], headerBadges:[...headerBadges],
+      band:$('band-name').value, venue:$('footer-venue').value,
+      lastModified: _wsLastModified};
+    _doApplyState(state);
+    showToast('Version distante chargée — annuler ?', ()=>{
+      items=snapshot.items; headerBadges=snapshot.headerBadges;
+      $('band-name').value=snapshot.band; $('footer-venue').value=snapshot.venue;
+      _wsLastModified=snapshot.lastModified;
+      renderBadges(); renderList(); syncFooter(); wsPatch();
+    });
+    return;
+  }
+
   _doApplyState(state);
 }
 
@@ -740,6 +749,7 @@ function _doApplyState(state){
   }
   if(state.bandName)     $('band-name').value    = state.bandName;
   if(state.footerVenue)  $('footer-venue').value = state.footerVenue;
+  if(state.lastModified) _wsLastModified = state.lastModified;
   renderBadges(true);
   renderList();
   syncFooter();
@@ -749,6 +759,7 @@ function _doApplyState(state){
 function wsPatch(){
   if(wsSuppressPatch) return;
   if(!ws || ws.readyState !== WebSocket.OPEN) return;
+  _wsLastModified = Date.now();
   ws.send(JSON.stringify({ type:'patch', state: wsGetState() }));
 }
 
@@ -796,7 +807,8 @@ function wsConnect(sessionId){
     _wsReconnectDelay = 2000; // reset backoff à la connexion réussie
     wsIndicator('on');
     wsUpdateShareUI();
-    wsPatch();
+    // Ne PAS envoyer wsPatch() ici : si le serveur a déjà un état (init à venir),
+    // on l'écraserait avec notre état local avant même de le recevoir (B10 / ping-pong).
     // Mettre à jour l'URL du navigateur sans recharger
     const url = new URL(window.location.href);
     url.searchParams.set('s', sessionId);
@@ -814,6 +826,10 @@ function wsConnect(sessionId){
 
     if(msg.type === 'init' || msg.type === 'patch'){
       wsApplyState(msg.state, msg.type === 'init');
+    }
+    if(msg.type === 'joined'){
+      // Session vide — on est le premier : pousser notre état local
+      wsPatch();
     }
     if(msg.type === 'peer_joined' || msg.type === 'peer_left' || msg.type === 'init' || msg.type === 'joined'){
       const peersEl = $('share-peers');
@@ -951,6 +967,15 @@ renderList = function(...args){
 };
 $('band-name').addEventListener('input', wsPatch);
 $('footer-venue').addEventListener('input', wsPatch);
+
+// Appliquer les patches WS en attente quand l'utilisateur quitte un champ
+document.addEventListener('focusout', ()=>{
+  if(_wsPendingState){
+    const s = _wsPendingState;
+    _wsPendingState = null;
+    wsApplyState(s, false);
+  }
+});
 
 applyTheme('sepia');renderBadges(); renderList(); syncFooter();
 </script>
