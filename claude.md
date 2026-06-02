@@ -106,11 +106,11 @@ Sep:  {type:'sep',  id:'sep43', label}
 
 ### 🟡 UX
 - **U18** — Gestion des sessions (suppression, quota)
-- **U22** — PWA installable : `manifest.json` + `standalone` + icônes `android-chrome-*` déjà présentes dans `favicon_io/`. Pas de Service Worker (offline non requis).
 
 
 ### ✅ Livrés
-- **B11** — ~~Nom 'Anonyme' non remplacé~~ → mise à jour optimiste via `_wsKnownNames` + `_wsMyLastSentName`
+- **B11** — ~~Nom 'Anonyme' non remplacé dans le bouton toolbar~~ → `wsUpdateToolbarLabel()` appelée au changement de nom ; `wsIndicator` délègue à cette fonction
+- **U22** — ~~PWA installable~~ → `manifest.json` (standalone, `SetlistTool`, icônes 192/512) + meta `apple-mobile-web-app-*`
 - **U20** — ~~Thème OS~~ → `prefers-color-scheme` au chargement + listener ; priorité au toggle manuel
 - **U21** — ~~Favicon~~ → `favicon_io/` · `.ico` + `32x32` + `16x16` + `apple-touch-icon`
 - **U17** — ~~Liste des membres connectés~~ → `identify`/`peers_update`, noms affichés dans l'overlay
@@ -122,4 +122,4 @@ Sep:  {type:'sep',  id:'sep43', label}
 - **B-ping-pong** — ~~Deux sessions s'écrasent mutuellement~~ → patches plus vieux ignorés ; patches différés pendant saisie active
 
 ---
-*Màj 2 juin 2026 (c)*
+*Màj 2 juin 2026 (d)*

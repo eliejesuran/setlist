@@ -8,6 +8,11 @@
 <meta name="licence" content="GPL">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Setlist</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SetlistTool">
 <link rel="icon" type="image/x-icon"       href="favicon_io/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
@@ -723,13 +728,17 @@ function wsIndicator(state){
   if(!el) return;
   el.style.background = state==='on' ? '#58d68d' : state==='connecting' ? '#f39c12' : 'var(--muted)';
   el.title = state==='on' ? `Connecté — session ${wsSessionId}` : state==='connecting' ? 'Connexion…' : 'Non connecté';
-  // Nom dans le bouton toolbar
+  wsUpdateToolbarLabel();
+}
+
+function wsUpdateToolbarLabel(){
+  const connected = ws && ws.readyState === WebSocket.OPEN;
+  const connecting = ws && ws.readyState === WebSocket.CONNECTING;
   const lbl = $('share-btn-lbl');
-  if(lbl){
-    if(state==='on') lbl.textContent = wsPeerName() || 'En ligne';
-    else if(state==='connecting') lbl.textContent = '…';
-    else lbl.textContent = 'Partager';
-  }
+  if(!lbl) return;
+  if(connected)        lbl.textContent = wsPeerName() || 'En ligne';
+  else if(connecting)  lbl.textContent = '…';
+  else                 lbl.textContent = 'Partager';
 }
 
 function wsGetState(){
@@ -1073,6 +1082,7 @@ $('share-peer-name').addEventListener('input', ()=>{
   }
   _wsMyLastSentName = newName;
   wsUpdateShareUI();
+  wsUpdateToolbarLabel();
 });
 
 // Nom affiché de session → patch WS dès qu'il change

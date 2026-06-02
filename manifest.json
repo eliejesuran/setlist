@@ -1,0 +1,23 @@
+{
+  "name": "SetlistTool",
+  "short_name": "SetlistTool",
+  "description": "Gestion de setlist collaborative en temps réel",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0a0a",
+  "theme_color": "#c8a84b",
+  "icons": [
+    {
+      "src": "favicon_io/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon_io/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
