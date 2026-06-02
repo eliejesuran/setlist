@@ -1,125 +1,79 @@
 # SSBBB — Setlist Tool
-**v2026-06-02b** · Elie JESURAN · GPL · `index.html` standalone + `server.js` WS
+**v2026-06-02d** · Elie JESURAN · GPL
 
-## Stack
-- Client : HTML/CSS/JS monofichier, localStorage, CDN jsPDF 2.5.1 + html2canvas 1.4.1 + Google Fonts (Bebas Neue, Space Mono)
-- Serveur : Node 20 + ws · Render (gratuit) · `wss://setlist-21hb.onrender.com` · keep-alive UptimeRobot `/healthz` 5min
-- Front hébergé : Infomaniak `jesuran.be`
+## Architecture
+`index.html` standalone (HTML/CSS/JS monofichier) · jsPDF 2.5.1 + html2canvas 1.4.1 · Google Fonts CDN  
+Serveur : Node 20 + ws · `wss://setlist-21hb.onrender.com` · Render gratuit · UptimeRobot `/healthz` 5min  
+Front : Infomaniak `jesuran.be` · PWA `manifest.json` (SetlistTool, icônes 192/512)
 
-## État global JS
-| Var | Type | Rôle |
-|---|---|---|
-| `items` | `Song\|Sep[]` | Liste ordonnée |
-| `headerBadges` | `{id,label}[]` | Badges header |
-| `nextId/nextBadgeId` | number | Compteurs ID |
-| `currentTheme` | string | `dark-gold`\|`sepia`\|`light-paper` |
-| `ws/wsSessionId` | WS\|null | Session WS active |
-| `wsSuppressPatch` | bool | Verrou anti-boucle patch |
-| `_wsLastModified` | number | Timestamp live de la dernière modif locale (ms) |
-| `_wsPendingState` | object\|null | Patch reçu mis en attente pendant la saisie active |
-| `_wsKnownNames` | string[] | Dernière liste de noms pairs (mise à jour optimiste) |
-| `_wsMyLastSentName` | string | Dernier nom envoyé via `identify` (pour mise à jour optimiste) |
-| `_themeManualOverride` | bool | `true` si l'utilisateur a toggleé le thème manuellement |
-
-## Structures données
+## Modèle de données
 ```js
 Song: {type:'song', id:'s42', title, artist, duration:'M:SS', comment, privateUrl, privateNote}
 Sep:  {type:'sep',  id:'sep43', label}
+SetlistSlot: {id, name, items, headerBadges, bandName, footerVenue, sessionName, savedAt}
+// privateUrl/privateNote exclus PDF et export texte
 ```
-`privateUrl`/`privateNote` → exclus PDF et export texte.
 
-## Fonctionnalités clés
-| # | Feature | Notes |
-|---|---|---|
-| 1 | Édition inline | titre/artiste/comment/durée directs dans la liste |
-| 2 | Durées | `parseDur()` M:SS, `updateTotals()`, `subBefore(idx)` par bloc |
-| 3 | localStorage | clé `ssbbb_setlist_v1`, autosave debounce 15s, restore au load |
-| 4 | Export texte | `##BAND/VENUE/PRINT/BADGES:` + lignes `Titre - Artiste - dur - note &privé: url &note: txt` |
-| 5 | PDF | mode auto selon thème (dark→PNG×1.5, light→JPEG×2), pagination, options timing/artiste/comment/privés |
-| 6 | Thèmes | cycle dark-gold→sepia→light-paper, bouton coin header |
-| 7 | Mobile | <640px : sheet (6 champs), boutons ▲▼, pas d'artiste/comment inline |
-| 8 | WS collab | patch = état complet + `lastModified` + `sessionName`, reconnexion backoff 2→30s, TTL 8h, indicateur couleur toolbar |
-| 9 | Champs privés | privateUrl (icône 🔗 dans liste) + privateNote via sheet |
-| 10 | Codes courts | ID lisibles type `jazz42` générés par `wsRandomId()` (format `[a-z0-9]{4,16}`) |
-| 11 | Membres connectés | Noms affichés via `identify`/`peers_update` dans l'overlay partage |
-| 12 | Nom de session | Champ partagé via patch WS (`sessionName`), stocké côté serveur |
-
-## Protocole WS
-`patch`(c→s) · `init/joined/peer_joined/peer_left/session_expired`(s→c) · `ping/pong`
-
-### Logique de sync (côté client)
-- `ws.onopen` → envoie `identify{name}` ; ne PAS envoyer `wsPatch()` (évite d'écraser l'état serveur avant de recevoir `init`)
-- `joined` (session vide) → `wsPatch()` pour initialiser le serveur avec l'état local
-- `init` (session existante) → `wsApplyState(state, true)` ; si `state.lastModified < _wsLastModified`, toast undo
-- `patch` reçu → ignoré si `state.lastModified < _wsLastModified` (anti-ping-pong) ; différé si saisie active (`_wsPendingState`), appliqué au `focusout`
-- `wsPatch()` met à jour `_wsLastModified = Date.now()` avant d'envoyer
-- `identify` → déclenche `peers_update` (serveur) → `wsUpdatePeersList()` côté client
-- Re-identify automatique quand le champ nom change en cours de session
-
-### Protocole serveur — messages
-| Message | Direction | Contenu |
-|---|---|---|
-| `patch` | c→s | `{state}` dont `lastModified`, `sessionName` |
-| `identify` | c→s | `{name}` |
-| `init` | s→c | `{state, names[], sessionName, peers}` |
-| `joined` | s→c | `{names[], sessionName, peers}` (session vide) |
-| `peer_joined/left` | s→c | `{names[], peers}` |
-| `peers_update` | s→c | `{names[], peers}` |
-| `ping/pong` | c↔s | heartbeat |
-
-## PDF
-- Nommage : `{band}_{slugBadges}_{mode}.pdf`
-- `dark-gold` → dark (fond noir, PNG ×1.5) · `sepia`/`light-paper` → light (fond blanc, JPEG ×2)
-
-## localStorage payload
-`{items, headerBadges, bandName, footerVenue, savedAt}`
-
-## Fonctions principales
-| Fonction | Rôle |
+## État global
+| Var | Rôle |
 |---|---|
-| `renderList()` | Re-rend tout depuis `items[]` |
-| `renderBadges(skipPatch?)` | Re-rend badges header |
-| `makeSong(song,num)` / `makeSep(sep,idx)` | Crée DOM |
-| `addSong(d)` / `addSep(lbl)` | Ajoute item |
-| `updateTotals()` / `subBefore(idx)` / `refreshSubs()` | Durées |
-| `syncFooter()` | Sync footer ↔ header |
-| `buildPdfHtml(mode)` / `generatePDF()` | Export PDF |
-| `exportImportFormat()` / `parseImport(text)` | Texte |
-| `lsSave()` / `lsLoad()` | localStorage |
-| `applyTheme(key)` | CSS vars |
-| `openSheet(song)` / `closeSheet()` | Bottom sheet |
-| `wsConnect(id)` / `wsDisconnect()` | WS session |
-| `wsPatch()` / `wsApplyState(state,isInit?)` | Sync état WS (met à jour `_wsLastModified`) |
-| `_doApplyState(state)` | Application effective d'un état distant (appelé par `wsApplyState`) |
-| `wsUpdatePeersList(names,count)` | Met à jour l'affichage des membres connectés |
-| `wsDoConnect()` | Valide le code saisi et lance `wsConnect()` |
-| `wsValidateCode(raw)` | Valide un code de session, retourne message d'erreur ou `null` |
-| `wsRandomId()` | Génère un code lisible type `jazz42` |
-| `wsUpdateTtl()` / `wsUpdateShareUI()` | UI session |
+| `items` | `Song\|Sep[]` ordonnée |
+| `headerBadges` | `{id,label}[]` badges header |
+| `nextId` / `nextBadgeId` | compteurs ID auto-incrément |
+| `currentTheme` | `dark-gold\|sepia\|light-paper` |
+| `ws` / `wsSessionId` | WebSocket actif + ID session |
+| `wsSuppressPatch` | verrou anti-boucle patch |
+| `_wsLastModified` | timestamp ms dernière modif locale |
+| `_wsPendingState` | patch reçu différé (saisie active) |
+| `_wsKnownNames` / `_wsMyLastSentName` | noms pairs + mon dernier nom envoyé |
+| `_themeManualOverride` | inhibe le suivi OS theme si true |
+| `_undoStack` | pile snapshots complets (max 20) |
+| `_currentSlotId` | ID slot actif dans `ssbbb_setlists_v2` |
 
----
+## localStorage
+`ssbbb_setlists_v2` → `{current: id, setlists: SetlistSlot[]}` · autosave debounce 3s  
+Migration auto depuis `ssbbb_setlist_v1` au premier chargement.
+
+## Thèmes
+Cycle `dark-gold`→`sepia`→`light-paper` · suit `prefers-color-scheme` sauf `_themeManualOverride`  
+PDF : `dark-gold` → PNG ×1.5 fond noir · `sepia`/`light-paper` → JPEG ×2 fond blanc · nom `{band}_{badges}_{mode}.pdf`
+
+## WS Collaboration
+
+### Invariants à ne pas casser
+- `onopen` → `identify{name}` **uniquement** — jamais `wsPatch()` ici (éviterait d'écraser l'état serveur avant `init`)
+- `joined` (session vide) → `wsPatch()` pour initialiser le serveur avec l'état local
+- `init` (session existante) → `wsApplyState(state, true)` ; si distant < local → appliquer + toast undo
+- `patch` reçu → ignoré si `lastModified < _wsLastModified` (anti-ping-pong) ; différé si saisie active → appliqué au `focusout`
+- `slCreate` / `slDelete(slot actif)` → `wsDisconnect()` avant tout changement d'état (sinon broadcast état vide aux pairs)
+- `canNativeShare()` = `navigator.share` **+** touch détecté — ne pas afficher le bouton 📤 sur desktop
+
+### Messages
+| Direction | Type | Contenu |
+|---|---|---|
+| c→s | `patch` | `{state}` avec `lastModified`, `sessionName` |
+| c→s | `identify` | `{name}` |
+| s→c | `init` | `{state, names[], sessionName, peers}` — session existante |
+| s→c | `joined` | `{names[], sessionName, peers}` — session vide |
+| s→c | `peer_joined\|peer_left\|peers_update` | `{names[], peers}` |
+| s→c | `session_expired` | → `wsDisconnect()` + toast |
+| c↔s | `ping/pong` | heartbeat |
+
+## Fonctions clés
+**Rendu** `renderList()` · `renderBadges(skipPatch?)` · `makeSong(song,num)` · `makeSep(sep,idx)` · `syncFooter()`  
+**Données** `addSong(d)` · `addSep(lbl)` · `parseDur(s)` · `fmtDur(s)` · `updateTotals()` · `subBefore(idx)` · `refreshSubs()`  
+**Undo** `pushUndo()` · `undoLast()` · `captureState()`  
+**Storage** `lsSave()` · `lsLoad()` · `slGetAll()` · `slSwitch(id)` · `slCreate(name)` · `slDelete(id)` · `slRename(id,name)` · `slRenderList()`  
+**PDF** `buildPdfHtml(mode)` · `generatePDF()`  
+**Import/Export texte** `exportImportFormat()` · `parseImport(text)`  
+**Sheet mobile** `openSheet(song)` · `closeSheet()`  
+**Helpers** `mob()` (≤640px ou touch) · `canNativeShare()` (share + touch) · `showToast(msg,undoFn)` · `scheduleAutoSave()`  
+**WS** `wsConnect(id)` · `wsDisconnect()` · `wsPatch()` · `wsApplyState(state,isInit?)` · `_doApplyState(state)` · `wsDoConnect()` · `wsValidateCode(raw)` · `wsRandomId()` · `wsUpdateShareUI()` · `wsUpdatePeersList(names,count)` · `wsUpdateToolbarLabel()` · `wsUpdateTtl()`
 
 ## Backlog actif
-
-### 🟠 Robustesse
-- **R2** — autosave debounce 15s → réduire à 2-3s
-
-### 🟡 UX
-- **U18** — Gestion des sessions (suppression, quota)
-
-
-### ✅ Livrés
-- **B11** — ~~Nom 'Anonyme' non remplacé dans le bouton toolbar~~ → `wsUpdateToolbarLabel()` appelée au changement de nom ; `wsIndicator` délègue à cette fonction
-- **U22** — ~~PWA installable~~ → `manifest.json` (standalone, `SetlistTool`, icônes 192/512) + meta `apple-mobile-web-app-*`
-- **U20** — ~~Thème OS~~ → `prefers-color-scheme` au chargement + listener ; priorité au toggle manuel
-- **U21** — ~~Favicon~~ → `favicon_io/` · `.ico` + `32x32` + `16x16` + `apple-touch-icon`
-- **U17** — ~~Liste des membres connectés~~ → `identify`/`peers_update`, noms affichés dans l'overlay
-- **U19** — ~~Rejoindre par code + nommer la session~~ → codes `jazz-42`, champ nom partagé via WS
-- **M2** — ~~Nom du groupe absent du slug PDF~~ → `{band}_{badges}_{mode}.pdf`
-- **M3/R3** — ~~`footer-badge2` / `buildPdfHtml` en dur sur `[1]`~~ → dernier badge dynamique
-- **B10** — ~~Badges non populés chez le pair qui reçoit le lien~~ → `wsPatch()` retiré de `onopen`
-- **B8** — ~~Modifs offline écrasées à la reconnexion WS~~ → comparaison `lastModified` + toast undo
-- **B-ping-pong** — ~~Deux sessions s'écrasent mutuellement~~ → patches plus vieux ignorés ; patches différés pendant saisie active
+**Moyen** U23 Minuteur concert (chrono setlist) · U24 Import texte libre intelligent · U25 Notes globales setlist · U18 Gestion avancée sessions WS  
+**Confort** U26 Raccourcis clavier (Enter/↑↓/Del) · U27 Thème persisté localStorage · U28 Compteur titres par bloc · U29 Recherche/filtre  
+**Mineur** U30 Export CSV · U31 Swipe supprimer séparateurs
 
 ---
 *Màj 2 juin 2026 (d)*

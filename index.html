@@ -68,6 +68,18 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
 .btn-mv{background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;line-height:1;cursor:pointer;padding:0;border-radius:2px;width:26px;height:22px;display:flex;align-items:center;justify-content:center}.btn-mv:active{border-color:var(--gold);color:var(--gold)}.btn-mv:disabled{opacity:.2;cursor:default}
 .btn-edit{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 5px;line-height:1;display:flex;align-items:center;justify-content:center;width:28px;flex-shrink:0}.btn-edit:hover{color:var(--gold)}
 @media(max-width:640px){header,main,footer{padding-left:16px;padding-right:16px}.toolbar{padding:10px 16px;gap:6px}.tbtn .lbl{display:none}.tbtn{padding:9px 12px}.inp-artist,.inp-comment{display:none}.mob-arrows{display:flex}.c-num{cursor:default;font-size:14px}.btn-edit{display:none}.hbtn .lbl{display:none}#pdf-opts-panel{left:auto;right:0;}}
+/* Swipe-to-delete */
+.row-song{position:relative;overflow:hidden}
+.swipe-del-bg{position:absolute;right:0;top:0;bottom:0;width:80px;background:#c0392b;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;pointer-events:none;opacity:0;transition:opacity .15s}
+.row-song.swipe-active .swipe-del-bg{opacity:1}
+/* Setlists overlay */
+.sl-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:4px;margin-bottom:6px;cursor:pointer;background:var(--card);transition:border-color .15s}
+.sl-item:hover{border-color:var(--gold-dim)}.sl-item.sl-active{border-color:var(--gold);background:rgba(200,168,75,.06)}
+.sl-name{flex:1;font-family:'Space Mono',monospace;font-size:12px;color:var(--white);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-meta{font-size:10px;color:var(--grey);letter-spacing:.08em;flex-shrink:0}
+.sl-del{background:none;border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer;border-radius:2px;padding:2px 7px;flex-shrink:0}.sl-del:hover{border-color:#e74c3c;color:#e74c3c}
+/* Undo button disabled */
+#btn-undo:disabled{opacity:.35;cursor:default}
 </style>
 </head>
 <body>
@@ -107,11 +119,12 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
 </header>
 <div class="toolbar">
   <button class="tbtn pdf" id="btn-pdf" type="button"><span>⬇</span><span class="lbl">PDF</span></button>
- 
+  <button class="tbtn" id="btn-setlists" type="button" title="Gérer les setlists sauvegardées"><span>📚</span><span class="lbl">Setlists</span></button>
   <button class="tbtn" id="btn-localsave" type="button" style="border-color:rgba(39,174,96,.4);color:#58d68d;background:rgba(39,174,96,.05);" title="Sauvegarde dans le navigateur — persiste sans télécharger"><span>&#128204;</span><span class="lbl" id="localsave-lbl">Sauvegarde auto</span></button>
   <button class="tbtn imp" id="btn-texte" type="button"><span>📋</span><span class="lbl">Texte</span></button>
   <button class="tbtn" id="btn-share" type="button" style="border-color:rgba(155,89,182,.5);color:#9b59b6;background:rgba(155,89,182,.06);"><span>🔗</span><span class="lbl" id="share-btn-lbl">Partager</span></button>
   <span id="ws-indicator" title="Non connecté" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;margin-left:2px;transition:background .4s;"></span>
+  <button class="tbtn" id="btn-undo" type="button" disabled title="Annuler la dernière action" style="margin-left:auto;"><span>↩</span><span class="lbl">Annuler</span></button>
 </div>
 <main>
   <div class="total-bar"><div><div class="t-lbl">Durée totale</div><div class="t-val" id="total-time">0:00</div></div><div class="t-sub" id="total-count">0 titre</div></div>
@@ -166,6 +179,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
     <div style="display:flex;gap:8px;margin-top:6px;">
       <input id="share-url-input" readonly style="flex:1;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:'Space Mono',monospace;font-size:11px;padding:10px 12px;border-radius:4px;outline:none;min-width:0;">
       <button id="btn-copy-share" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;" disabled>⎘</button>
+      <button id="btn-native-share" class="btn-imp" type="button" style="flex:none;padding:10px 14px;border-radius:4px;display:none;" title="Partager via…">📤</button>
     </div>
   </div>
 
@@ -182,6 +196,14 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
     Tout le monde peut modifier. L'app fonctionne aussi hors ligne sans session.
   </div>
 </div></div>
+<div class="overlay" id="setlists-ov"><div class="import-box" style="max-width:460px;">
+  <div class="import-title">📚 Mes setlists</div>
+  <div id="sl-list" style="margin:14px 0;max-height:320px;overflow-y:auto;"></div>
+  <div class="import-btns" style="margin-top:8px;">
+    <button class="btn-imp" id="btn-sl-new" type="button">+ Nouvelle setlist</button>
+    <button class="btn-cancel" id="btn-sl-close" type="button">Fermer</button>
+  </div>
+</div></div>
 <div class="overlay" id="texte-ov"><div class="import-box"><div class="import-title">📋 Texte</div><div class="import-sub">Export de la setlist — modifie et applique pour importer</div><textarea class="import-ta" id="texte-ta" placeholder="La setlist apparaîtra ici…"></textarea><div class="import-hint">Formats : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note</code><br>Ligne vide ou <code>---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-copy-texte" type="button">⎘ Copier</button><button class="btn-imp" id="btn-apply-texte" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Appliquer</button><button class="btn-cancel" id="btn-cancel-texte" type="button">Fermer</button></div></div></div>
 <div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-header"><div class="sheet-ttl" id="sh-name">—</div><button class="sheet-close-top" id="sh-close" type="button" title="Fermer">✕</button></div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><div class="sh-lbl">🔗 Lien privé <span style="font-weight:normal;opacity:.6">(non imprimé)</span></div><input type="url" class="sh-inp" id="sh-private-url" placeholder="https://youtu.be/…"><div class="sh-lbl">📝 Note privée <span style="font-weight:normal;opacity:.6">(non imprimée)</span></div><textarea class="sh-inp" id="sh-private-note" placeholder="Accord de départ, arrangements, remarques…" style="resize:vertical;min-height:72px;line-height:1.5;font-family:'Space Mono',monospace;font-size:12px;"></textarea></div></div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo" type="button">Annuler</button></div>
@@ -191,8 +213,16 @@ let headerBadges=[{id:'hb1',label:'Mon groupe'},{id:'hb2',label:'Date'}];
 let nextBadgeId=3;
 let items=[];
 let nextId=100, dragSrcId=null;
+let _undoStack=[];
+let _currentSlotId='';
+
+function captureState(){return {items:JSON.parse(JSON.stringify(items)),headerBadges:JSON.parse(JSON.stringify(headerBadges)),bandName:$('band-name').value,footerVenue:$('footer-venue').value};}
+function pushUndo(){_undoStack.push(captureState()); if(_undoStack.length>20)_undoStack.shift(); updateUndoBtn();}
+function updateUndoBtn(){const b=$('btn-undo'); if(b) b.disabled=_undoStack.length===0;}
+function undoLast(){if(!_undoStack.length)return; const s=_undoStack.pop(); wsSuppressPatch=true; items=s.items; headerBadges=s.headerBadges; if(s.bandName)$('band-name').value=s.bandName; if(s.footerVenue)$('footer-venue').value=s.footerVenue; wsSuppressPatch=false; renderBadges(true); renderList(); syncFooter(); wsPatch(); updateUndoBtn();}
 const $=id=>document.getElementById(id);
 const mob=()=>window.innerWidth<=640||'ontouchstart' in window;
+const canNativeShare=()=>!!navigator.share&&('ontouchstart' in window||navigator.maxTouchPoints>0);
 const parseDur=s=>{if(!s)return 0; const p=s.trim().split(':'); return p.length===2?(parseInt(p[0])||0)*60+(parseInt(p[1])||0):parseInt(s)||0};
 const fmtDur=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 function updateTotals(){const songs=items.filter(i=>i.type==='song'); const secs=songs.reduce((a,s)=>a+parseDur(s.duration),0); $('total-time').textContent=fmtDur(secs); $('total-count').textContent=songs.length+' titre'+(songs.length!==1?'s':'')}
@@ -202,16 +232,22 @@ function renderBadges(skipPatch){const row=$('badge-row'); row.innerHTML=''; hea
 function renderList(){const body=$('list-body'); body.innerHTML=''; let num=0; items.forEach((item,idx)=>{if(item.type==='sep') body.appendChild(makeSep(item,idx)); else {num++; body.appendChild(makeSong(item,num));}}); updateTotals()}
 function makeSong(song,num){const row=document.createElement('div'); row.className='row-song'; row.dataset.id=song.id; row.draggable=true; const cn=document.createElement('div'); cn.className='c-num'; cn.textContent=num; row.appendChild(cn); const cm=document.createElement('div'); cm.className='c-main'; const ti=document.createElement('input'); ti.type='text'; ti.className='inp-title'; ti.value=song.title; ti.placeholder='Titre…'; ti.oninput=()=>{song.title=ti.value; wsPatch()}; ti.onclick=e=>{if(mob()){e.preventDefault(); openSheet(song)}}; cm.appendChild(ti); const ar=document.createElement('input'); ar.type='text'; ar.className='inp-artist'; ar.value=song.artist; ar.placeholder='Artiste…'; ar.oninput=()=>{song.artist=ar.value; wsPatch()}; cm.appendChild(ar); const co=document.createElement('input'); co.type='text'; co.className='inp-comment'; co.value=song.comment; co.placeholder='Note scène…'; co.oninput=()=>{song.comment=co.value; wsPatch()}; cm.appendChild(co); row.appendChild(cm);
  // Icône lien privé (visible si privateUrl renseigné)
- if(song.privateUrl){const li=document.createElement('a'); li.className='song-link-icon'; li.href=song.privateUrl; li.target='_blank'; li.rel='noopener'; li.title=song.privateUrl; li.textContent='🔗'; row.appendChild(li);} const cd=document.createElement('div'); cd.className='c-dur'; const di=document.createElement('input'); di.type='text'; di.className='inp-dur'; di.value=song.duration; di.placeholder='0:00'; di.oninput=()=>{song.duration=di.value; updateTotals(); refreshSubs(); wsPatch()}; di.onblur=()=>{const s=parseDur(di.value); di.value=fmtDur(s); song.duration=di.value; updateTotals(); refreshSubs(); wsPatch()}; cd.appendChild(di); row.appendChild(cd); const cdel=document.createElement('div'); cdel.className='c-del'; const db=document.createElement('button'); db.type='button'; db.className='btn-del'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===song.id); const label=song.title||'Sans titre'; items=items.filter(i=>i.id!==song.id); renderList(); showToast(`"${label}" supprimé`,()=>{items.splice(idx,0,song)})}; cdel.appendChild(db); row.appendChild(cdel); // Mobile move buttons ↑ ↓
+ if(song.privateUrl){const li=document.createElement('a'); li.className='song-link-icon'; li.href=song.privateUrl; li.target='_blank'; li.rel='noopener'; li.title=song.privateUrl; li.textContent='🔗'; row.appendChild(li);} const cd=document.createElement('div'); cd.className='c-dur'; const di=document.createElement('input'); di.type='text'; di.className='inp-dur'; di.value=song.duration; di.placeholder='0:00'; di.oninput=()=>{song.duration=di.value; updateTotals(); refreshSubs(); wsPatch()}; di.onblur=()=>{const s=parseDur(di.value); di.value=fmtDur(s); song.duration=di.value; updateTotals(); refreshSubs(); wsPatch()}; cd.appendChild(di); row.appendChild(cd); const cdel=document.createElement('div'); cdel.className='c-del'; const db=document.createElement('button'); db.type='button'; db.className='btn-del'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===song.id); const label=song.title||'Sans titre'; pushUndo(); items=items.filter(i=>i.id!==song.id); renderList(); showToast(`"${label}" supprimé`,()=>{items.splice(idx,0,song); renderList()})}; cdel.appendChild(db); row.appendChild(cdel); // Mobile move buttons ↑ ↓
  const cma=document.createElement('div'); cma.className='mob-arrows';
  const bup=document.createElement('button'); bup.type='button'; bup.className='btn-mv'; bup.innerHTML='▲'; bup.title='Monter';
  const bdn=document.createElement('button'); bdn.type='button'; bdn.className='btn-mv'; bdn.innerHTML='▼'; bdn.title='Descendre';
- bup.onclick=()=>{const fi=items.findIndex(i=>i.id===song.id); if(fi<=0)return; const[m]=items.splice(fi,1); items.splice(fi-1,0,m); renderList()};
- bdn.onclick=()=>{const fi=items.findIndex(i=>i.id===song.id); if(fi>=items.length-1)return; const[m]=items.splice(fi,1); items.splice(fi+1,0,m); renderList()};
+ bup.onclick=()=>{const fi=items.findIndex(i=>i.id===song.id); if(fi<=0)return; pushUndo(); const[m]=items.splice(fi,1); items.splice(fi-1,0,m); renderList()};
+ bdn.onclick=()=>{const fi=items.findIndex(i=>i.id===song.id); if(fi>=items.length-1)return; pushUndo(); const[m]=items.splice(fi,1); items.splice(fi+1,0,m); renderList()};
  cma.appendChild(bup); cma.appendChild(bdn); row.appendChild(cma);
  // Bouton édition desktop (ouvre le sheet)
  const cedit=document.createElement('button'); cedit.type='button'; cedit.className='btn-edit'; cedit.innerHTML='✎'; cedit.title='Éditer / champs privés'; cedit.onclick=()=>openSheet(song); row.appendChild(cedit);
- row.addEventListener('dragstart',e=>{dragSrcId=song.id; e.dataTransfer.effectAllowed='move'; row.style.opacity='.35'}); row.addEventListener('dragend',()=>{row.style.opacity=''; dragSrcId=null}); row.addEventListener('dragover',e=>{e.preventDefault(); row.classList.add('drag-over')}); row.addEventListener('dragleave',()=>row.classList.remove('drag-over')); row.addEventListener('drop',e=>{e.preventDefault(); row.classList.remove('drag-over'); if(!dragSrcId||dragSrcId===song.id)return; const fi=items.findIndex(i=>i.id===dragSrcId); const ti2=items.findIndex(i=>i.id===song.id); const [m]=items.splice(fi,1); items.splice(ti2,0,m); renderList()});
+ row.addEventListener('dragstart',e=>{dragSrcId=song.id; e.dataTransfer.effectAllowed='move'; row.style.opacity='.35'}); row.addEventListener('dragend',()=>{row.style.opacity=''; dragSrcId=null}); row.addEventListener('dragover',e=>{e.preventDefault(); row.classList.add('drag-over')}); row.addEventListener('dragleave',()=>row.classList.remove('drag-over')); row.addEventListener('drop',e=>{e.preventDefault(); row.classList.remove('drag-over'); if(!dragSrcId||dragSrcId===song.id)return; pushUndo(); const fi=items.findIndex(i=>i.id===dragSrcId); const ti2=items.findIndex(i=>i.id===song.id); const [m]=items.splice(fi,1); items.splice(ti2,0,m); renderList()});
+ // Swipe gauche pour supprimer (mobile)
+ const swipeBg=document.createElement('div'); swipeBg.className='swipe-del-bg'; swipeBg.textContent='🗑'; row.appendChild(swipeBg);
+ let swX=0,swDx=0,swActive=false;
+ row.addEventListener('touchstart',e=>{swX=e.touches[0].clientX;swDx=0;swActive=true;row.style.transition='none';},{passive:true});
+ row.addEventListener('touchmove',e=>{if(!swActive)return;swDx=e.touches[0].clientX-swX;if(swDx>0){swDx=0;return;}row.style.transform=`translateX(${swDx}px)`;row.classList.toggle('swipe-active',swDx<-30);},{passive:true});
+ row.addEventListener('touchend',()=>{swActive=false;row.style.transition='transform .2s';if(swDx<-80){row.style.transform='translateX(-100%)';setTimeout(()=>{const idx=items.findIndex(i=>i.id===song.id);const label=song.title||'Sans titre';pushUndo();items=items.filter(i=>i.id!==song.id);renderList();showToast(`"${label}" supprimé`,()=>{items.splice(idx,0,song);renderList();});},180);}else{row.style.transform='';row.classList.remove('swipe-active');}});
  return row}
 /* ══ TOAST UNDO ══ */
 let _toastTimer=null;
@@ -225,9 +261,9 @@ function showToast(msg, undoFn){
   undoBtn.onclick=()=>{undoFn(); dismiss(); renderList()};
   _toastTimer=setTimeout(dismiss, 4000);
 }
-function makeSep(sep,idx){const row=document.createElement('div'); row.className='row-sep'; const ll=document.createElement('div'); ll.className='sep-line-l'; row.appendChild(ll); const badge=document.createElement('div'); badge.className='sep-badge'; const li=document.createElement('input'); li.className='inp-sep'; li.value=sep.label; li.placeholder='Séparateur…'; li.style.width=Math.max(60,sep.label.length*9)+'px'; li.oninput=()=>{sep.label=li.value; li.style.width=Math.max(60,li.value.length*9)+'px'; wsPatch()}; badge.appendChild(li); const sub=document.createElement('span'); sub.className='sep-sub'; sub.dataset.sub=sep.id; sub.textContent=fmtDur(subBefore(idx)); badge.appendChild(sub); const db=document.createElement('button'); db.type='button'; db.className='btn-del-sep'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===sep.id); items=items.filter(i=>i.id!==sep.id); renderList(); showToast(`Séparateur "${sep.label}" supprimé`,()=>{items.splice(idx,0,sep)})}; badge.appendChild(db); row.appendChild(badge); const lr=document.createElement('div'); lr.className='sep-line-r'; row.appendChild(lr); return row}
-function addSong(d={}){items.push({type:'song',id:'s'+nextId++,title:d.title||'',artist:d.artist||'',duration:d.duration||'0:00',comment:d.comment||'',privateUrl:d.privateUrl||'',privateNote:d.privateNote||''}); renderList()}
-function addSep(lbl=''){items.push({type:'sep',id:'sep'+nextId++,label:lbl||'— Pause —'}); renderList()}
+function makeSep(sep,idx){const row=document.createElement('div'); row.className='row-sep'; const ll=document.createElement('div'); ll.className='sep-line-l'; row.appendChild(ll); const badge=document.createElement('div'); badge.className='sep-badge'; const li=document.createElement('input'); li.className='inp-sep'; li.value=sep.label; li.placeholder='Séparateur…'; li.style.width=Math.max(60,sep.label.length*9)+'px'; li.oninput=()=>{sep.label=li.value; li.style.width=Math.max(60,li.value.length*9)+'px'; wsPatch()}; badge.appendChild(li); const sub=document.createElement('span'); sub.className='sep-sub'; sub.dataset.sub=sep.id; sub.textContent=fmtDur(subBefore(idx)); badge.appendChild(sub); const db=document.createElement('button'); db.type='button'; db.className='btn-del-sep'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===sep.id); pushUndo(); items=items.filter(i=>i.id!==sep.id); renderList(); showToast(`Séparateur "${sep.label}" supprimé`,()=>{items.splice(idx,0,sep);renderList()})}; badge.appendChild(db); row.appendChild(badge); const lr=document.createElement('div'); lr.className='sep-line-r'; row.appendChild(lr); return row}
+function addSong(d={}){pushUndo(); items.push({type:'song',id:'s'+nextId++,title:d.title||'',artist:d.artist||'',duration:d.duration||'0:00',comment:d.comment||'',privateUrl:d.privateUrl||'',privateNote:d.privateNote||''}); renderList()}
+function addSep(lbl=''){pushUndo(); items.push({type:'sep',id:'sep'+nextId++,label:lbl||'— Pause —'}); renderList()}
 let _sheetDirty = false;
 function openSheet(song){
   _sheetDirty = false;
@@ -543,6 +579,7 @@ $('btn-copy-texte').addEventListener('click',async()=>{
 
 //U22
 $('btn-apply-texte').addEventListener('click',()=>{
+  pushUndo();
   const prev={items:[...items],badges:[...headerBadges],band:$('band-name').value,venue:$('footer-venue').value};
   const {imported, badgesParsed, bandParsed, venueParsed, printParsed} = parseImport($('texte-ta').value);
   if(badgesParsed){
@@ -623,51 +660,158 @@ const _mql = window.matchMedia('(prefers-color-scheme: dark)');
 function _applyOsTheme(dark){ if(!_themeManualOverride) applyTheme(dark ? 'dark-gold' : 'sepia'); }
 _mql.addEventListener('change', e => _applyOsTheme(e.matches));
 
-/* ══ LOCALSTORAGE SAVE / RESTORE ══ */
-const LS_KEY = 'ssbbb_setlist_v1';
+/* ══ LOCALSTORAGE MULTI-SETLIST ══ */
+const LS_KEY_V1  = 'ssbbb_setlist_v1';   // legacy
+const LS_KEY_V2  = 'ssbbb_setlists_v2';  // multi-setlist
 
+function _slApplyState(state){
+  // Deep clone pour éviter toute référence partagée avec le store en mémoire
+  if(Array.isArray(state.items)){
+    items=JSON.parse(JSON.stringify(state.items));
+    items.forEach(item=>{const n=parseInt((item.id||'').replace(/\D/g,''));if(n>=nextId)nextId=n+1;});
+  }
+  if(Array.isArray(state.headerBadges)){
+    headerBadges=JSON.parse(JSON.stringify(state.headerBadges));
+    headerBadges.forEach(b=>{const n=parseInt((b.id||'').replace(/\D/g,''));if(n>=nextBadgeId)nextBadgeId=n+1;});
+  }
+  if(state.bandName)     $('band-name').value     = state.bandName;
+  if(state.footerVenue)  $('footer-venue').value  = state.footerVenue;
+  // Restaurer le nom de session (share-session-name) depuis le slot
+  const sn = $('share-session-name');
+  if(sn) sn.value = state.sessionName || '';
+}
+function _slStore(){try{return JSON.parse(localStorage.getItem(LS_KEY_V2)||'null');}catch{return null;}}
+function _slPersist(store){try{localStorage.setItem(LS_KEY_V2,JSON.stringify(store));}catch(e){console.warn('localStorage save failed',e);}}
+function slGetAll(){
+  let store = _slStore();
+  if(!store){
+    // Migration depuis v1
+    const raw = localStorage.getItem(LS_KEY_V1);
+    const legacy = raw ? JSON.parse(raw) : null;
+    const id = 'sl1';
+    store = {current:id, setlists:[{id,name:legacy?.bandName||'Ma setlist',items:legacy?.items||[],headerBadges:legacy?.headerBadges||[{id:'hb1',label:'Mon groupe'},{id:'hb2',label:'Date'}],bandName:legacy?.bandName||'Mon Groupe',footerVenue:legacy?.footerVenue||'',savedAt:legacy?.savedAt||new Date().toISOString()}]};
+    _slPersist(store);
+  }
+  return store;
+}
 function lsSave(){
-  const state = {
-    items,
-    headerBadges,
-    bandName:    $('band-name').value,
-    footerVenue: $('footer-venue').value,
-    savedAt:     new Date().toISOString(),
-  };
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-    showSaveFlash();
-  } catch(e) { console.warn('localStorage save failed', e); }
+  const store = slGetAll();
+  // Chercher le slot courant par ID exact — pas de fallback sur [0] pour éviter les écrasements silencieux
+  const slot = store.setlists.find(s=>s.id===_currentSlotId);
+  if(!slot){ console.warn('lsSave: slot introuvable pour id', _currentSlotId); return; }
+  slot.items        = JSON.parse(JSON.stringify(items));
+  slot.headerBadges = JSON.parse(JSON.stringify(headerBadges));
+  slot.bandName     = $('band-name').value;
+  slot.footerVenue  = $('footer-venue').value;
+  slot.sessionName  = $('share-session-name')?.value || '';
+  // Nom affiché dans l'overlay = sessionName si renseigné, sinon bandName
+  slot.name         = slot.sessionName || slot.bandName || 'Sans nom';
+  slot.savedAt      = new Date().toISOString();
+  _slPersist(store);
+  showSaveFlash();
 }
-
 function lsLoad(){
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if(!raw) return false;
-    const state = JSON.parse(raw);
-    if(state.items){
-      items = state.items;
-      items.forEach(item=>{
-        const n=parseInt((item.id||'').replace(/\D/g,''));
-        if(n>=nextId) nextId=n+1;
-      });
-    }
-    if(state.headerBadges){
-      headerBadges = state.headerBadges;
-      headerBadges.forEach(b=>{
-        const n=parseInt((b.id||'').replace(/\D/g,''));
-        if(n>=nextBadgeId) nextBadgeId=n+1;
-      });
-    }
-    if(state.bandName)      $('band-name').value      = state.bandName;
-    if(state.footerVenue)   $('footer-venue').value   = state.footerVenue;
-    return state.savedAt || true;
-  } catch(e) { return false; }
+  const store = slGetAll();
+  _currentSlotId = store.current;
+  const slot = store.setlists.find(s=>s.id===store.current)||store.setlists[0];
+  if(!slot) return false;
+  _slApplyState(slot);
+  return slot.savedAt || true;
 }
-
 function lsClear(){
-  localStorage.removeItem(LS_KEY);
+  const store = slGetAll();
+  const slot = store.setlists.find(s=>s.id===_currentSlotId);
+  if(slot){slot.items=[];slot.headerBadges=[{id:'hb1',label:'Mon groupe'},{id:'hb2',label:'Date'}];slot.bandName='Mon Groupe';slot.footerVenue='';slot.savedAt=new Date().toISOString();_slPersist(store);}
   updateSaveStatus('Sauvegarde effacée');
+}
+function slCreate(name){
+  if(ws&&ws.readyState===WebSocket.OPEN){if(!confirm('Créer une setlist va déconnecter la session WS. Continuer ?'))return; wsDisconnect();}
+  clearTimeout(lsTimer);
+  lsSave();
+  const store = slGetAll();
+  const id = 'sl'+(Date.now());
+  store.setlists.push({id,name:name||'Nouvelle setlist',items:[],headerBadges:[{id:'hb'+nextBadgeId++,label:'Mon groupe'},{id:'hb'+nextBadgeId++,label:'Date'}],bandName:name||'Mon Groupe',footerVenue:'',savedAt:new Date().toISOString()});
+  store.current = id;
+  _slPersist(store);
+  _currentSlotId = id;
+  items=[]; headerBadges=store.setlists.find(s=>s.id===id).headerBadges;
+  $('band-name').value=name||'Mon Groupe'; $('footer-venue').value='';
+  _undoStack=[]; updateUndoBtn();
+  renderBadges(); renderList(); syncFooter();
+  showToast(`Setlist "${name||'Nouvelle setlist'}" créée`,()=>{});
+  slRenderList();
+}
+function slSwitch(id){
+  if(id===_currentSlotId)return;
+  if(ws&&ws.readyState===WebSocket.OPEN){if(!confirm('Déconnecter la session WS pour changer de setlist ?'))return; wsDisconnect();}
+  // Annuler l'autosave en attente avant de sauvegarder explicitement
+  clearTimeout(lsTimer);
+  lsSave();
+  const store = slGetAll();
+  store.current = id;
+  _slPersist(store);
+  _currentSlotId = id;
+  const slot = store.setlists.find(s=>s.id===id);
+  if(!slot)return;
+  _slApplyState(slot);
+  _undoStack=[]; updateUndoBtn();
+  renderBadges(); renderList(); syncFooter();
+  slRenderList();
+}
+function slDelete(id){
+  clearTimeout(lsTimer);
+  const store = slGetAll();
+  if(store.setlists.length<=1){showToast('Impossible — garde au moins une setlist',()=>{});return;}
+  if(id===store.current&&ws&&ws.readyState===WebSocket.OPEN) wsDisconnect();
+  store.setlists = store.setlists.filter(s=>s.id!==id);
+  if(store.current===id){
+    store.current=store.setlists[0].id;
+    _slPersist(store);
+    _currentSlotId = store.current;
+    _slApplyState(store.setlists[0]);
+    _undoStack=[]; updateUndoBtn();
+    renderBadges(); renderList(); syncFooter();
+  } else {
+    _slPersist(store);
+  }
+  slRenderList();
+}
+function slRename(id, name){
+  const store = slGetAll();
+  const slot = store.setlists.find(s=>s.id===id);
+  if(slot){
+    slot.name = name;
+    slot.sessionName = name;
+    _slPersist(store);
+    // Si c'est le slot actif, mettre à jour share-session-name en live
+    if(id === _currentSlotId){
+      const sn = $('share-session-name');
+      if(sn) sn.value = name;
+    }
+  }
+}
+function slRenderList(){
+  const store = slGetAll();
+  const el = $('sl-list'); if(!el)return;
+  el.innerHTML='';
+  store.setlists.forEach(slot=>{
+    const songs=slot.items?slot.items.filter(i=>i.type==='song').length:0;
+    const d=document.createElement('div'); d.className='sl-item'+(slot.id===store.current?' sl-active':'');
+    const displayName = slot.sessionName || slot.name || slot.bandName || 'Sans nom';
+    const nm=document.createElement('span'); nm.className='sl-name'; nm.textContent=displayName;
+    nm.contentEditable='true'; nm.spellcheck=false;
+    nm.addEventListener('blur',()=>{
+      const newName = nm.textContent.trim()||'Sans nom';
+      slRename(slot.id, newName);
+    });
+    nm.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();nm.blur();}});
+    const meta=document.createElement('span'); meta.className='sl-meta'; meta.textContent=songs+' titre'+(songs!==1?'s':'');
+    const del=document.createElement('button'); del.className='sl-del'; del.textContent='×'; del.title='Supprimer';
+    del.onclick=e=>{e.stopPropagation();if(confirm(`Supprimer "${slot.name}" ?`))slDelete(slot.id);};
+    d.appendChild(nm); d.appendChild(meta); d.appendChild(del);
+    d.onclick=e=>{if(e.target!==del&&!nm.contains(e.target))slSwitch(slot.id);};
+    el.appendChild(d);
+  });
 }
 
 function showSaveFlash(){
@@ -689,7 +833,7 @@ function updateSaveStatus(msg){
 let lsTimer = null;
 function scheduleAutoSave(){
   clearTimeout(lsTimer);
-  lsTimer = setTimeout(lsSave, 15000);
+  lsTimer = setTimeout(lsSave, 3000);
 }
 
 document.getElementById('btn-localsave').addEventListener('click', lsSave);
@@ -886,6 +1030,8 @@ function wsUpdateShareUI(){
 
   // Lien à partager : visible seulement quand connecté
   if(urlSec)   urlSec.style.display = connected ? '' : 'none';
+  const nativeBtn = $('btn-native-share');
+  if(nativeBtn) nativeBtn.style.display = (connected && canNativeShare()) ? '' : 'none';
   if(urlInput && connected && wsSessionId){
     const url = new URL(window.location.href);
     url.searchParams.set('s', wsSessionId);
@@ -1011,16 +1157,26 @@ function wsValidateCode(raw){
 
 // ── Bouton "Nouvelle session" (offline, setlist vide) ──
 $('btn-new-session').addEventListener('click', ()=>{
-  if((items.length > 0 || ws) && !confirm('Créer une nouvelle setlist ? La session actuelle sera perdue (pense à sauvegarder d\'abord).')) return;
-  wsDisconnect();
-  items = [];
-  headerBadges = [{id:'hb'+nextBadgeId++,label:'Mon groupe'},{id:'hb'+nextBadgeId++,label:'Date'}];
-  $('band-name').value = 'Mon Groupe';
-  $('footer-venue').value = '';
-  renderBadges();
-  renderList();
-  syncFooter();
-  showToast('Nouvelle session créée — offline', ()=>{});
+  const name = prompt('Nom de la nouvelle setlist ?', 'Nouvelle setlist');
+  if(name === null) return;
+  slCreate(name.trim() || 'Nouvelle setlist');
+});
+
+// ── Bouton Undo ──
+$('btn-undo').addEventListener('click', undoLast);
+
+// ── Bouton Setlists ──
+$('btn-setlists').addEventListener('click', ()=>{
+  slRenderList();
+  $('setlists-ov').classList.add('open');
+});
+$('btn-sl-close').addEventListener('click', ()=> $('setlists-ov').classList.remove('open'));
+$('setlists-ov').addEventListener('click', e=>{ if(e.target===$('setlists-ov')) $('setlists-ov').classList.remove('open'); });
+$('btn-sl-new').addEventListener('click', ()=>{
+  const name = prompt('Nom de la nouvelle setlist ?', 'Nouvelle setlist');
+  if(name === null) return;
+  slCreate(name.trim() || 'Nouvelle setlist');
+  $('setlists-ov').classList.remove('open');
 });
 
 // ── Bouton Partager ──
@@ -1101,6 +1257,20 @@ $('btn-copy-share').addEventListener('click', async ()=>{
     showToast('Sélectionne le lien et fais Ctrl+C', ()=>{});
   }
 });
+
+$('btn-native-share').addEventListener('click', async ()=>{
+  const url = $('share-url-input')?.value;
+  if(!url) return;
+  const sessionName = $('share-session-name')?.value.trim();
+  const title = sessionName ? `Setlist — ${sessionName}` : 'Setlist collaborative';
+  try {
+    await navigator.share({ title, url });
+  } catch(e) {
+    if(e.name !== 'AbortError') showToast('Partage non disponible', ()=>{});
+  }
+});
+
+// Visibilité du bouton partage natif gérée par wsUpdateShareUI (mobile uniquement)
 
 // Rejoindre automatiquement si ?s= dans l'URL au chargement
 (()=>{
