@@ -2,7 +2,7 @@
   "name": "SetlistTool",
   "short_name": "SetlistTool",
   "description": "Gestion de setlist collaborative en temps réel",
-  "start_url": "./",
+  "start_url": "/setlist/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0a0a0a",
