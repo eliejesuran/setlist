@@ -35,6 +35,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .hbadge{border:1px solid var(--gold-dim);padding:5px 12px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);background:rgba(200,168,75,.05);display:inline-flex;align-items:center;gap:6px}
 .badge-ef{background:transparent;border:none;color:var(--gold);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;outline:none;min-width:40px}
 .badge-del{background:none;border:none;cursor:pointer;color:var(--gold-dim);font-size:13px;line-height:1;padding-left:4px;display:none}.hbadge:hover .badge-del{display:inline}
+@media(hover:none){.badge-del{display:inline}}
 .btn-add-badge{border:1px dashed var(--gold-dim);padding:5px 10px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-dim);background:transparent;cursor:pointer;font-family:'Space Mono',monospace}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 40px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:50;align-items:center}
 .tbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;border-radius:2px;border:1px solid var(--gold-dim);color:var(--gold);background:rgba(200,168,75,.05);white-space:nowrap}.tbtn:hover{background:rgba(200,168,75,.12);border-color:var(--gold)}
@@ -224,7 +225,7 @@ let _currentSlotId='';
 function captureState(){return {items:JSON.parse(JSON.stringify(items)),headerBadges:JSON.parse(JSON.stringify(headerBadges)),bandName:$('band-name').value,footerVenue:$('footer-venue').value};}
 function pushUndo(){_undoStack.push(captureState()); if(_undoStack.length>20)_undoStack.shift(); updateUndoBtn();}
 function updateUndoBtn(){const b=$('btn-undo'); if(b) b.disabled=_undoStack.length===0;}
-function undoLast(){if(!_undoStack.length)return; const s=_undoStack.pop(); wsSuppressPatch=true; items=s.items; headerBadges=s.headerBadges; if(s.bandName)$('band-name').value=s.bandName; if(s.footerVenue)$('footer-venue').value=s.footerVenue; wsSuppressPatch=false; renderBadges(true); renderList(); syncFooter(); wsPatch(); updateUndoBtn();}
+function undoLast(){if(!_undoStack.length)return; const s=_undoStack.pop(); wsSuppressPatch=true; items=s.items; headerBadges=s.headerBadges; if(s.bandName!==undefined)$('band-name').value=s.bandName; if(s.footerVenue!==undefined)$('footer-venue').value=s.footerVenue; wsSuppressPatch=false; renderBadges(true); renderList(); syncFooter(); wsPatch(); updateUndoBtn();}
 const $=id=>document.getElementById(id);
 const mob=()=>window.innerWidth<=640||'ontouchstart' in window;
 const canNativeShare=()=>!!navigator.share&&('ontouchstart' in window||navigator.maxTouchPoints>0);
@@ -263,7 +264,8 @@ function showToast(msg, undoFn){
   const undoBtn=$('toast-undo');
   toast.classList.add('show');
   const dismiss=()=>{toast.classList.remove('show'); undoBtn.onclick=null};
-  undoBtn.onclick=()=>{undoFn(); dismiss(); renderList()};
+  undoBtn.style.display = undoFn ? '' : 'none';
+  undoBtn.onclick = undoFn ? (()=>{undoFn(); dismiss(); renderList()}) : null;
   _toastTimer=setTimeout(dismiss, 4000);
 }
 function makeSep(sep,idx){const row=document.createElement('div'); row.className='row-sep'; const ll=document.createElement('div'); ll.className='sep-line-l'; row.appendChild(ll); const badge=document.createElement('div'); badge.className='sep-badge'; const li=document.createElement('input'); li.className='inp-sep'; li.value=sep.label; li.placeholder='Séparateur…'; li.style.width=Math.max(60,sep.label.length*9)+'px'; li.oninput=()=>{sep.label=li.value; li.style.width=Math.max(60,li.value.length*9)+'px'; wsPatch()}; badge.appendChild(li); const sub=document.createElement('span'); sub.className='sep-sub'; sub.dataset.sub=sep.id; sub.textContent=fmtDur(subBefore(idx)); badge.appendChild(sub); const db=document.createElement('button'); db.type='button'; db.className='btn-del-sep'; db.innerHTML='×'; db.onclick=()=>{const idx=items.findIndex(i=>i.id===sep.id); pushUndo(); items=items.filter(i=>i.id!==sep.id); renderList(); showToast(`Séparateur "${sep.label}" supprimé`,()=>{items.splice(idx,0,sep);renderList()})}; badge.appendChild(db); row.appendChild(badge); const lr=document.createElement('div'); lr.className='sep-line-r'; row.appendChild(lr); return row}
@@ -271,6 +273,8 @@ function addSong(d={}){pushUndo(); items.push({type:'song',id:'s'+nextId++,title
 function addSep(lbl=''){pushUndo(); items.push({type:'sep',id:'sep'+nextId++,label:lbl||'— Pause —'}); renderList()}
 let _sheetDirty = false;
 function openSheet(song){
+  // items peut être remplacé par un patch WS pendant l'édition → viser l'objet vivant
+  const live = () => items.find(i=>i.id===song.id) || song;
   _sheetDirty = false;
   $('sh-name').textContent=song.title||'Nouveau titre';
   $('sh-title').value=song.title||'';
@@ -279,13 +283,13 @@ function openSheet(song){
   $('sh-comment').value=song.comment||'';
   $('sh-private-url').value=song.privateUrl||'';
   $('sh-private-note').value=song.privateNote||'';
-  $('sh-title').oninput=()=>{_sheetDirty=true; song.title=$('sh-title').value; $('sh-name').textContent=song.title||'—'; wsPatch()};
-  $('sh-artist').oninput=()=>{_sheetDirty=true; song.artist=$('sh-artist').value; wsPatch()};
-  $('sh-dur').oninput=()=>{_sheetDirty=true; song.duration=$('sh-dur').value; wsPatch()};
-  $('sh-dur').onblur=()=>{const s=parseDur($('sh-dur').value); $('sh-dur').value=fmtDur(s); song.duration=$('sh-dur').value; if(_sheetDirty) wsPatch()};
-  $('sh-comment').oninput=()=>{_sheetDirty=true; song.comment=$('sh-comment').value; wsPatch()};
-  $('sh-private-url').oninput=()=>{_sheetDirty=true; song.privateUrl=$('sh-private-url').value; wsPatch()};
-  $('sh-private-note').oninput=()=>{_sheetDirty=true; song.privateNote=$('sh-private-note').value; wsPatch()};
+  $('sh-title').oninput=()=>{_sheetDirty=true; const s=live(); s.title=$('sh-title').value; $('sh-name').textContent=s.title||'—'; wsPatch()};
+  $('sh-artist').oninput=()=>{_sheetDirty=true; live().artist=$('sh-artist').value; wsPatch()};
+  $('sh-dur').oninput=()=>{_sheetDirty=true; live().duration=$('sh-dur').value; wsPatch()};
+  $('sh-dur').onblur=()=>{const secs=parseDur($('sh-dur').value); $('sh-dur').value=fmtDur(secs); live().duration=$('sh-dur').value; if(_sheetDirty) wsPatch()};
+  $('sh-comment').oninput=()=>{_sheetDirty=true; live().comment=$('sh-comment').value; wsPatch()};
+  $('sh-private-url').oninput=()=>{_sheetDirty=true; live().privateUrl=$('sh-private-url').value; wsPatch()};
+  $('sh-private-note').oninput=()=>{_sheetDirty=true; live().privateNote=$('sh-private-note').value; wsPatch()};
   $('sheet-ov').classList.add('open');
   setTimeout(()=>$('sh-title').focus(),100);
 }
@@ -315,6 +319,7 @@ function exportImportFormat(){
   return bandLine+'\n'+venueLine+'\n'+printLine+'\n'+badgesLine+'\n'+songs;
 }
 function buildPdfHtml(mode){
+  const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const isLight=mode==='light';
   const includeTiming=$('pdf-include-timing').checked;
   const includeArtist=$('pdf-include-artist').checked;
@@ -342,21 +347,21 @@ function buildPdfHtml(mode){
   const totalSongs=items.filter(i=>i.type==='song').length;
   const footerCenter=includeTiming?`${totalSongs} titres \u2014 ${fmtDur(totalSecs)}`:`${totalSongs} titres`;
 
-  const badgesH=headerBadges.map(b=>`<span style="border:1px solid ${BORDER};padding:2px 9px;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:${BADGE_TXT};background:${BADGE_BG};">${b.label}</span>`).join(' ');
+  const badgesH=headerBadges.map(b=>`<span style="border:1px solid ${BORDER};padding:2px 9px;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:${BADGE_TXT};background:${BADGE_BG};">${esc(b.label)}</span>`).join(' ');
 
   // Header HTML (repeated on each page)
   const headerHtml=`<div style="padding:18px 28px 14px;border-bottom:2px solid ${BORDER};margin-bottom:0;">
     <div style="display:flex;align-items:baseline;justify-content:space-between;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:.08em;line-height:.9;color:${TEXT};">${bn}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:.08em;line-height:.9;color:${TEXT};">${esc(bn)}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">${badgesH}</div>
     </div>
   </div>`;
 
   // Footer HTML
   const footerHtml=`<div style="border-top:1px solid ${BORDER};padding:8px 28px;display:flex;justify-content:space-between;align-items:center;font-size:8px;letter-spacing:.15em;color:${MUTED};">
-    <span style="color:${BADGE_TXT};">${bn.toUpperCase()}${b1?' \u2022 '+b1.toUpperCase():''}</span>
+    <span style="color:${BADGE_TXT};">${esc(bn.toUpperCase())}${b1?' \u2022 '+esc(b1.toUpperCase()):''}</span>
     <span style="color:${TEXT};">${footerCenter}</span>
-    <span style="color:${SUB};">${date}${venue?' \u2014 '+venue:''}</span>
+    <span style="color:${SUB};">${esc(date)}${venue?' \u2014 '+esc(venue):''}</span>
   </div>`;
 
   // Song row height estimate: ~38px for title only, +20px if has comment
@@ -373,17 +378,22 @@ function buildPdfHtml(mode){
   // Split items into pages
   function itemHeight(item){
     if(item.type==='sep') return 40;
-    const hc=includeComment&&item.comment&&item.comment.trim();
-    const ha=includeArtist&&item.artist&&item.artist.trim();
-    if(hc && ha) return 88;
-    if(hc || ha) return 70+15;
-    return 56;
+    const cmt=includeComment&&item.comment?item.comment.trim():'';
+    const ha =includeArtist&&item.artist&&item.artist.trim();
+    let h = (cmt&&ha) ? 88 : ((cmt||ha) ? 85 : 56);
+    // lignes de repli : ~60 car./ligne pour la note de scène, ~55 pour la note privée
+    if(cmt) h += Math.max(0,Math.ceil(cmt.length/60)-1)*18;
+    if(includePrivateUrl && item.privateUrl) h += 16;
+    if(includePrivateNote && item.privateNote){
+      const pn=item.privateNote.trim();
+      h += 18 + Math.max(0,Math.ceil(pn.length/55)-1)*16;
+    }
+    return h;
   }
 
   const pages=[];
   let currentPage=[];
   let currentH=0;
-  let sn=0; // global song counter
 
   items.forEach((item,idx)=>{
     const h=itemHeight(item);
@@ -394,13 +404,12 @@ function buildPdfHtml(mode){
       if(currentPage.length) pages.push(currentPage);
       currentPage=[]; currentH=0;
     }
-    currentPage.push({item,idx,sn:item.type==='song'?++sn:sn});
+    currentPage.push({item,idx});
     currentH+=h;
   });
   if(currentPage.length) pages.push(currentPage);
 
-  // Rebuild sn properly (sn was tracked above but sep entries have wrong sn)
-  // Re-do: assign song numbers globally
+  // Numérotation globale des titres
   let globalSn=0;
   const songNums=new Map();
   items.forEach(item=>{ if(item.type==='song') songNums.set(item.id,++globalSn); });
@@ -414,7 +423,7 @@ function buildPdfHtml(mode){
         rows+=`<div style="display:flex;align-items:center;gap:8px;margin:7px 0 4px;padding:0 14px;">
           <div style="flex:1;height:1px;background:${BORDER};"></div>
           <div style="display:inline-flex;align-items:center;gap:6px;border:1px solid ${BORDER};padding:3px 10px;background:${SEP_BG};">
-            <span style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:${BADGE_TXT};">${item.label}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:${BADGE_TXT};">${esc(item.label)}</span>
             ${includeTiming?`<span style="font-family:'Bebas Neue',sans-serif;font-size:12px;color:${SUB};">${fmtDur(sub2)}</span>`:''}
           </div>
           <div style="width:12px;height:1px;background:${BORDER};"></div>
@@ -427,19 +436,19 @@ function buildPdfHtml(mode){
         rows+=`<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 14px;border-bottom:1px solid ${BDIM};${bg}">
           <span style="font-family:'Bebas Neue',sans-serif;font-size:13px;color:${MUTED};min-width:22px;text-align:right;flex-shrink:0;padding-top:5px;">${snum}</span>
           <div style="flex:1;min-width:0;">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:.04em;color:${TEXT};line-height:1.0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.title||'\u2014'}</div>
-            ${ha?`<div style="font-family:'Space Mono',monospace;font-size:11px;color:${MUTED};margin-top:1px;letter-spacing:.05em;font-style:italic;">${item.artist}</div>`:''}
-            ${hc?`<div style="font-family:'Space Mono',monospace;font-size:14px;color:${CMT_CLR};margin-top:2px;line-height:1.3;">${item.comment}</div>`:''}
-            ${includePrivateUrl&&item.privateUrl?`<div style="font-family:'Space Mono',monospace;font-size:10px;color:${MUTED};margin-top:2px;font-style:italic;">🔗 ${item.privateUrl}</div>`:''}
-            ${includePrivateNote&&item.privateNote?`<div style="font-family:'Space Mono',monospace;font-size:11px;color:${CMT_CLR};margin-top:2px;line-height:1.3;border-left:2px solid ${BORDER};padding-left:6px;">${item.privateNote}</div>`:''}
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:.04em;color:${TEXT};line-height:1.0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(item.title)||'\u2014'}</div>
+            ${ha?`<div style="font-family:'Space Mono',monospace;font-size:11px;color:${MUTED};margin-top:1px;letter-spacing:.05em;font-style:italic;">${esc(item.artist)}</div>`:''}
+            ${hc?`<div style="font-family:'Space Mono',monospace;font-size:14px;color:${CMT_CLR};margin-top:2px;line-height:1.3;">${esc(item.comment)}</div>`:''}
+            ${includePrivateUrl&&item.privateUrl?`<div style="font-family:'Space Mono',monospace;font-size:10px;color:${MUTED};margin-top:2px;font-style:italic;">🔗 ${esc(item.privateUrl)}</div>`:''}
+            ${includePrivateNote&&item.privateNote?`<div style="font-family:'Space Mono',monospace;font-size:11px;color:${CMT_CLR};margin-top:2px;line-height:1.3;border-left:2px solid ${BORDER};padding-left:6px;">${esc(item.privateNote)}</div>`:''}
           </div>
-          ${includeTiming?`<span style="font-family:'Space Mono',monospace;font-size:13px;color:${SUB};white-space:nowrap;flex-shrink:0;padding-top:6px;">${item.duration}</span>`:''}
+          ${includeTiming?`<span style="font-family:'Space Mono',monospace;font-size:13px;color:${SUB};white-space:nowrap;flex-shrink:0;padding-top:6px;">${esc(item.duration)}</span>`:''}
         </div>`;
       }
     });
 
     return `<div style="width:794px;height:1123px;overflow:hidden;background:${BG};font-family:'Space Mono',monospace;padding:0;display:flex;flex-direction:column;page-break-after:${pi<pages.length-1?'always':'avoid'};">
-      ${pi===0?headerHtml:`<div style="padding:10px 28px 6px;border-bottom:1px solid ${BDIM};font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.08em;color:${MUTED};">${bn} (suite)</div>`}
+      ${pi===0?headerHtml:`<div style="padding:10px 28px 6px;border-bottom:1px solid ${BDIM};font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.08em;color:${MUTED};">${esc(bn)} (suite)</div>`}
       <div style="flex:1;padding:4px 0;">${rows}</div>
       ${footerHtml}
     </div>`;
@@ -488,7 +497,6 @@ function generatePDF(){return async()=>{
   }catch(e){console.error(e); alert('Erreur PDF. Essaie depuis Chrome.');}
   finally{ov.classList.remove('active'); _pdfGenerating=false;}
 }}
-function saveHtml(){const esc=s=>String(s).replace(/"/g,'&quot;'); let html=document.documentElement.outerHTML; html=html.replace(/let headerBadges=\[[\s\S]*?\];/,'let headerBadges='+JSON.stringify(headerBadges)+';'); html=html.replace(/let items=\[[\s\S]*?\];/,'let items='+JSON.stringify(items)+';'); html=html.replace(/id="band-name" value="[^"]*"/,`id="band-name" value="${esc($('band-name').value)}"`); html=html.replace(/id="footer-venue" value="[^"]*"/,`id="footer-venue" value="${esc($('footer-venue').value)}"`); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'})); const slugHTML=headerBadges.slice(0,3).map(b=>b.label.replace(/[^a-z0-9]/gi,'_')).join('_'); a.download='setlist_'+slugHTML+'_setlist.html'; a.click()}
 $('btn-add-song').addEventListener('click',()=>addSong());
 $('btn-add-sep').addEventListener('click',()=>addSep());
 $('sh-close').addEventListener('click',closeSheet);
@@ -541,7 +549,7 @@ function parseImport(text){
     const privIdx = core.indexOf(' &privé: ');
     if(privIdx !== -1){ privateUrl = core.slice(privIdx+9).trim(); core = core.slice(0,privIdx).trim(); }
 
-    const parts = core.split(/\s*-\s*/).map(s=>s.trim());
+    const parts = core.split(/\s-\s/).map(s=>s.trim());
     // On garde les slots vides internes (ils préservent les positions artiste/dur)
     // mais on coupe les vides en queue
     while(parts.length && parts[parts.length-1]==='') parts.pop();
@@ -563,17 +571,6 @@ function parseImport(text){
   return {imported, badgesParsed, bandParsed, venueParsed, printParsed};
 }
 
-function doImport(mode){
-  const {imported, badgesParsed} = parseImport($('texte-ta').value);
-  if(badgesParsed){
-    headerBadges = badgesParsed.map((label,i)=>({id:'hb'+(nextBadgeId++), label}));
-    renderBadges();
-  }
-  if(mode==='replace') items = imported;
-  else items = items.concat(imported);
-  renderList();
-  $('texte-ov').classList.remove('open');
-}
 
 // ══ TEXTE OVERLAY (U7) ══
 $('btn-texte').addEventListener('click',()=>{
@@ -584,8 +581,8 @@ $('btn-cancel-texte').addEventListener('click',()=>$('texte-ov').classList.remov
 $('texte-ov').addEventListener('click',e=>{if(e.target===$('texte-ov'))$('texte-ov').classList.remove('open')});
 $('btn-copy-texte').addEventListener('click',async()=>{
   const text=$('texte-ta').value;
-  try{await navigator.clipboard.writeText(text); showToast('Texte copié ✓',()=>{});}
-  catch(e){$('texte-ta').focus();$('texte-ta').select(); showToast('Sélectionne le texte — Ctrl/Cmd+C',()=>{});}
+  try{await navigator.clipboard.writeText(text); showToast('Texte copié ✓');}
+  catch(e){$('texte-ta').focus();$('texte-ta').select(); showToast('Sélectionne le texte — Ctrl/Cmd+C');}
 });
 
 //U22
@@ -641,7 +638,6 @@ const THEMES={
   'sepia'      :{bg:'#f2e8c9',card:'#e8dbb0',border:'#c9a96e',gold:'#7c4a0f',gdim:'#a0692a',glit:'#4a2800',white:'#2a1500',grey:'#6b4c2a',muted:'#b89a6a'},
   'light-paper':{bg:'#f9f9f7',card:'#eeeeeb',border:'#d0d0cd',gold:'#1a1a1a',gdim:'#888888',glit:'#444444',white:'#111111',grey:'#555555',muted:'#aaaaaa'},
 };
-const THEME_ORDER = ['dark-gold','sepia','light-paper'];
 const THEME_NEXT  = {'dark-gold':'sepia','sepia':'light-paper','light-paper':'dark-gold'};
 const THEME_ICON  = {'dark-gold':'📜','sepia':'☀','light-paper':'🌙'};
 const THEME_LBL   = {'dark-gold':'Sépia','sepia':'Light','light-paper':'Dark'};
@@ -685,8 +681,8 @@ function _slApplyState(state){
     headerBadges=JSON.parse(JSON.stringify(state.headerBadges));
     headerBadges.forEach(b=>{const n=parseInt((b.id||'').replace(/\D/g,''));if(n>=nextBadgeId)nextBadgeId=n+1;});
   }
-  if(state.bandName)     $('band-name').value     = state.bandName;
-  if(state.footerVenue)  $('footer-venue').value  = state.footerVenue;
+  if(state.bandName    !== undefined) $('band-name').value    = state.bandName;
+  if(state.footerVenue !== undefined) $('footer-venue').value = state.footerVenue;
   // Restaurer le nom de session (share-session-name) depuis le slot
   const sn = $('share-session-name');
   if(sn) sn.value = state.sessionName || '';
@@ -697,8 +693,9 @@ function slGetAll(){
   let store = _slStore();
   if(!store){
     // Migration depuis v1
-    const raw = localStorage.getItem(LS_KEY_V1);
-    const legacy = raw ? JSON.parse(raw) : null;
+    let legacy = null;
+    try{ const raw = localStorage.getItem(LS_KEY_V1); legacy = raw ? JSON.parse(raw) : null; }
+    catch(e){ console.warn('migration v1 ignorée', e); }
     const id = 'sl1';
     store = {current:id, setlists:[{id,name:legacy?.bandName||'Ma setlist',items:legacy?.items||[],headerBadges:legacy?.headerBadges||[{id:'hb1',label:'Mon groupe'},{id:'hb2',label:'Date'}],bandName:legacy?.bandName||'Mon Groupe',footerVenue:legacy?.footerVenue||'',savedAt:legacy?.savedAt||new Date().toISOString()}]};
     _slPersist(store);
@@ -723,17 +720,12 @@ function lsSave(){
 }
 function lsLoad(){
   const store = slGetAll();
-  _currentSlotId = store.current;
   const slot = store.setlists.find(s=>s.id===store.current)||store.setlists[0];
   if(!slot) return false;
+  _currentSlotId = slot.id;
+  if(store.current !== slot.id){ store.current = slot.id; _slPersist(store); }
   _slApplyState(slot);
   return slot.savedAt || true;
-}
-function lsClear(){
-  const store = slGetAll();
-  const slot = store.setlists.find(s=>s.id===_currentSlotId);
-  if(slot){slot.items=[];slot.headerBadges=[{id:'hb1',label:'Mon groupe'},{id:'hb2',label:'Date'}];slot.bandName='Mon Groupe';slot.footerVenue='';slot.savedAt=new Date().toISOString();_slPersist(store);}
-  updateSaveStatus('Sauvegarde effacée');
 }
 /* ── Multi-setlist désactivé — remplacé par sessions WS ──────────────────
 function slCreate(name){
@@ -750,7 +742,7 @@ function slCreate(name){
   $('band-name').value=name||'Mon Groupe'; $('footer-venue').value='';
   _undoStack=[]; updateUndoBtn();
   renderBadges(); renderList(); syncFooter();
-  showToast(`Setlist "${name||'Nouvelle setlist'}" créée`,()=>{});
+  showToast(`Setlist "${name||'Nouvelle setlist'}" créée`);
   slRenderList();
 }
 function slSwitch(id){
@@ -770,9 +762,9 @@ function slSwitch(id){
   slRenderList();
 }
 function slDelete(id){
-  clearTimeout(lsTimer);
+  clearTimeout(lsTimer); lsTimer=null; lsSave(); // flush avant de toucher au store
   const store = slGetAll();
-  if(store.setlists.length<=1){showToast('Impossible — garde au moins une setlist',()=>{});return;}
+  if(store.setlists.length<=1){showToast('Impossible — garde au moins une setlist');return;}
   if(id===store.current&&ws&&ws.readyState===WebSocket.OPEN) wsDisconnect();
   store.setlists = store.setlists.filter(s=>s.id!==id);
   if(store.current===id){
@@ -825,6 +817,7 @@ function slRenderList(){
 }
 ────────────────────────────────────────────────────────────────────────── */
 
+let _saveFlashTimer = null;
 function showSaveFlash(){
   const btn = $('btn-localsave');
   const lbl = $('localsave-lbl');
@@ -832,7 +825,11 @@ function showSaveFlash(){
   const hhmm = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
   if(lbl) lbl.textContent = 'Sauvé ' + hhmm;
   if(btn){ btn.style.borderColor='#58d68d'; btn.style.color='#58d68d'; }
-  setTimeout(()=>{ if(lbl) lbl.textContent='Sauvegarde auto'; }, 30000);
+  clearTimeout(_saveFlashTimer);
+  _saveFlashTimer = setTimeout(()=>{
+    if(lbl) lbl.textContent='Sauvegarde auto';
+    if(btn){ btn.style.borderColor='rgba(39,174,96,.4)'; btn.style.color='#58d68d'; }
+  }, 30000);
 }
 
 function updateSaveStatus(msg){
@@ -844,7 +841,7 @@ function updateSaveStatus(msg){
 let lsTimer = null;
 function scheduleAutoSave(){
   clearTimeout(lsTimer);
-  lsTimer = setTimeout(lsSave, 3000);
+  lsTimer = setTimeout(()=>{ lsTimer=null; lsSave(); }, 3000);
 }
 
 document.getElementById('btn-localsave').addEventListener('click', lsSave);
@@ -852,7 +849,8 @@ $('band-name').addEventListener('input', scheduleAutoSave);
 $('footer-venue').addEventListener('input', scheduleAutoSave);
 
 // On load: try to restore
-const restored = lsLoad();
+let restored = false;
+try{ restored = lsLoad(); }catch(e){ console.warn('restauration impossible', e); }
 if(restored){
   const when = typeof restored === 'string'
     ? ' ('+new Date(restored).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+')'
@@ -863,7 +861,7 @@ if(restored){
 
 
 /* ══ COLLABORATION WEBSOCKET (U8) ══ */
-const WS_SERVER = 'https://setlist-21hb.onrender.com';
+const WS_SERVER = 'wss://setlist-21hb.onrender.com';
 let ws = null;
 let wsSessionId = null;
 let wsSuppressPatch = false;
@@ -872,6 +870,7 @@ let _wsLastModified = Date.now(); // horodatage live de la dernière modif local
 let _wsPendingState = null;       // patch reçu en attente (si saisie active)
 let _wsKnownNames   = [];         // dernière liste de noms pairs connue (optimiste)
 let _wsMyLastSentName = '';       // dernier nom qu'on a envoyé via identify
+let _wsPingTimer = null;          // heartbeat 30s (garde la connexion en vie)
 
 function wsPeerName(){
   return ($('share-peer-name')?.value.trim()) || 'Anonyme';
@@ -960,8 +959,8 @@ function _doApplyState(state){
       if(n>=nextBadgeId) nextBadgeId=n+1;
     });
   }
-  if(state.bandName)     $('band-name').value    = state.bandName;
-  if(state.footerVenue)  $('footer-venue').value = state.footerVenue;
+  if(state.bandName    !== undefined) $('band-name').value    = state.bandName;
+  if(state.footerVenue !== undefined) $('footer-venue').value = state.footerVenue;
   if(state.sessionName != null){ const sn=$('share-session-name'); if(sn) sn.value=state.sessionName; }
   if(state.lastModified) _wsLastModified = state.lastModified;
   renderBadges(true);
@@ -978,18 +977,14 @@ function wsPatch(){
 }
 
 // U14 : affiche le TTL restant de la session dans l'overlay de partage
-let _wsConnectedAt = null;
-const WS_SESSION_TTL_MS = 24 * 15 * 60 * 60 * 1000; // 15 jours, même valeur que le serveur
+const WS_SESSION_TTL_DAYS = 15; // idem serveur : 15 jours d'INACTIVITÉ (touch() à chaque message)
 function wsUpdateTtl(){
   const el = $('share-ttl');
   if(!el) return;
   const connected = ws && ws.readyState === WebSocket.OPEN;
-  if(!connected || !_wsConnectedAt){ el.textContent = ''; return; }
-  const elapsed = Date.now() - _wsConnectedAt;
-  const remaining = Math.max(0, WS_SESSION_TTL_MS - elapsed);
-  const h = Math.floor(remaining / 3600000);
-  const m = Math.floor((remaining % 3600000) / 60000);
-  el.textContent = `Session expire dans ${h}h${String(m).padStart(2,'0')}`;
+  el.textContent = connected
+    ? `Session conservée ${WS_SESSION_TTL_DAYS} jours après la dernière activité`
+    : '';
 }
 
 function wsUpdatePeersList(names, count){
@@ -1061,6 +1056,7 @@ function wsUpdateShareUI(){
 }
 
 function wsConnect(sessionId){
+  clearInterval(_wsPingTimer); _wsPingTimer = null;
   if(ws){ ws.close(); ws = null; }
   wsSessionId = sessionId;
   wsIndicator('connecting');
@@ -1068,8 +1064,11 @@ function wsConnect(sessionId){
   ws = new WebSocket(`${WS_SERVER}/session/${sessionId}`);
 
   ws.onopen = () => {
-    _wsConnectedAt = Date.now();
     _wsReconnectDelay = 2000; // reset backoff à la connexion réussie
+    clearInterval(_wsPingTimer);
+    _wsPingTimer = setInterval(()=>{
+      if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'ping'}));
+    }, 30000);
     wsIndicator('on');
     wsUpdateShareUI();
     // Annoncer notre nom aux pairs
@@ -1107,16 +1106,22 @@ function wsConnect(sessionId){
        || msg.type === 'init' || msg.type === 'joined'){
       wsUpdatePeersList(msg.names, msg.peers);
     }
+    if(msg.type === 'error'){
+      if(msg.code === 'SESSION_FULL'){ wsDisconnect(); showToast(msg.message || 'Session pleine'); }
+      else console.warn('[ws]', msg.code, msg.message || '');
+    }
     if(msg.type === 'session_expired'){
       wsDisconnect();
-      showToast('Session expirée — reconnecte-toi', ()=>{});
+      showToast('Session expirée — reconnecte-toi');
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (ev) => {
+    clearInterval(_wsPingTimer); _wsPingTimer = null;
     wsIndicator('off');
     wsUpdateShareUI();
-    if(wsSessionId){
+    // 1008 = refus explicite du serveur (session pleine, URL invalide) → pas de reconnexion
+    if(wsSessionId && ev.code !== 1008){
       const delay = _wsReconnectDelay;
       _wsReconnectDelay = Math.min(_wsReconnectDelay * 2, 30000);
       setTimeout(()=>{
@@ -1132,7 +1137,7 @@ function wsConnect(sessionId){
 
 function wsDisconnect(){
   wsSessionId = null;
-  _wsConnectedAt = null;
+  clearInterval(_wsPingTimer); _wsPingTimer = null;
   if(ws){ ws.close(); ws = null; }
   wsIndicator('off');
   wsUpdateShareUI();
@@ -1278,10 +1283,10 @@ $('btn-copy-share').addEventListener('click', async ()=>{
   if(!val) return;
   try {
     await navigator.clipboard.writeText(val);
-    showToast('Lien copié !', ()=>{});
+    showToast('Lien copié !');
   } catch {
     $('share-url-input').select();
-    showToast('Sélectionne le lien et fais Ctrl+C', ()=>{});
+    showToast('Sélectionne le lien et fais Ctrl+C');
   }
 });
 
@@ -1293,7 +1298,7 @@ $('btn-native-share').addEventListener('click', async ()=>{
   try {
     await navigator.share({ title, url });
   } catch(e) {
-    if(e.name !== 'AbortError') showToast('Partage non disponible', ()=>{});
+    if(e.name !== 'AbortError') showToast('Partage non disponible');
   }
 });
 
@@ -1319,6 +1324,20 @@ renderList = function(...args){
 };
 $('band-name').addEventListener('input', wsPatch);
 $('footer-venue').addEventListener('input', wsPatch);
+
+// Toute saisie (titre, artiste, note, durée, badge, séparateur, sheet) planifie une sauvegarde.
+// Sans ça, seuls les changements de structure et le nom du groupe étaient persistés.
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if(!t || !t.closest) return;
+  if(t.id==='share-code-input' || t.id==='share-peer-name') return;
+  if(t.closest('#texte-ov, #setlists-ov')) return;
+  scheduleAutoSave();
+});
+// Flush avant mise en veille / fermeture de l'onglet (iOS tue les PWA sans prévenir)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='hidden' && lsTimer){ clearTimeout(lsTimer); lsTimer=null; lsSave(); }
+});
 
 // Appliquer les patches WS en attente quand l'utilisateur quitte un champ
 document.addEventListener('focusout', ()=>{

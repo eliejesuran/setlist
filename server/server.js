@@ -124,9 +124,11 @@ const wss = new WebSocketServer({
     // 1. Origin check
     // origin peut être : absent (undefined), "null" (string, file:// ou contexte opaque),
     // ou une URL complète. On autorise les origines listées + null si ALLOW_NULL_ORIGIN.
+    // Comparaison exacte : startsWith laissait passer jesuran.be.exemple-malveillant.com
     const originOk = !origin
       || (ALLOW_NULL_ORIGIN && origin === 'null')
-      || ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+      || ALLOWED_ORIGINS.includes(origin)
+      || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
     if (!originOk) {
       console.warn(`[blocked] origin="${origin}" ip=${ip}`);
       return cb(false, 403, 'Forbidden');
