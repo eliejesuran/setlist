@@ -73,13 +73,11 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
 .row-song{position:relative;overflow:hidden}
 .swipe-del-bg{position:absolute;right:0;top:0;bottom:0;width:80px;background:#c0392b;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;pointer-events:none;opacity:0;transition:opacity .15s}
 .row-song.swipe-active .swipe-del-bg{opacity:1}
-/* Setlists overlay — désactivé (remplacé par sessions WS)
 .sl-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:4px;margin-bottom:6px;cursor:pointer;background:var(--card);transition:border-color .15s}
 .sl-item:hover{border-color:var(--gold-dim)}.sl-item.sl-active{border-color:var(--gold);background:rgba(200,168,75,.06)}
 .sl-name{flex:1;font-family:'Space Mono',monospace;font-size:12px;color:var(--white);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-meta{font-size:10px;color:var(--grey);letter-spacing:.08em;flex-shrink:0}
 .sl-del{background:none;border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer;border-radius:2px;padding:2px 7px;flex-shrink:0}.sl-del:hover{border-color:#e74c3c;color:#e74c3c}
-*/
 /* Undo button disabled */
 #btn-undo:disabled{opacity:.35;cursor:default}
 </style>
@@ -114,16 +112,14 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
         </label>
       </div>
     </div>
-    <button class="hbtn" id="btn-new-session" type="button" title="Remettre la setlist à zéro"><span>+</span><span class="lbl">Nouveau</span></button>
+    <button class="hbtn" id="btn-new-session" type="button" title="Créer une nouvelle setlist"><span>+</span><span class="lbl">Nouveau</span></button>
   </div>
   <input class="ef band-name-input" id="band-name" value="Mon Groupe" placeholder="Nom du groupe">
   <div class="badge-row" id="badge-row"></div>
 </header>
 <div class="toolbar">
   <button class="tbtn pdf" id="btn-pdf" type="button"><span>⬇</span><span class="lbl">PDF</span></button>
-  <!-- btn-setlists désactivé — multi-setlist remplacé par sessions WS
-  <button class="tbtn" id="btn-setlists" type="button" title="Gérer les setlists sauvegardées"><span>📚</span><span class="lbl">Setlists</span></button>
-  -->
+  <button class="tbtn" id="btn-setlists" type="button" title="Gérer les setlists sauvegardées"><span>📚</span><span class="lbl" id="sl-indicator-lbl">Setlists</span></button>
   <button class="tbtn" id="btn-localsave" type="button" style="border-color:rgba(39,174,96,.4);color:#58d68d;background:rgba(39,174,96,.05);" title="Sauvegarde dans le navigateur — persiste sans télécharger"><span>&#128204;</span><span class="lbl" id="localsave-lbl">Sauvegarde auto</span></button>
   <button class="tbtn imp" id="btn-texte" type="button"><span>📋</span><span class="lbl">Texte</span></button>
   <button class="tbtn" id="btn-share" type="button" style="border-color:rgba(155,89,182,.5);color:#9b59b6;background:rgba(155,89,182,.06);"><span>🔗</span><span class="lbl" id="share-btn-lbl">Partager</span></button>
@@ -200,16 +196,30 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
     Tout le monde peut modifier. L'app fonctionne aussi hors ligne sans session.
   </div>
 </div></div>
-<!-- overlay setlists désactivé — multi-setlist remplacé par sessions WS
 <div class="overlay" id="setlists-ov"><div class="import-box" style="max-width:460px;">
   <div class="import-title">📚 Mes setlists</div>
-  <div id="sl-list" style="margin:14px 0;max-height:320px;overflow-y:auto;"></div>
+  <div id="sl-list" style="margin:14px 0;max-height:260px;overflow-y:auto;"></div>
   <div class="import-btns" style="margin-top:8px;">
     <button class="btn-imp" id="btn-sl-new" type="button">+ Nouvelle setlist</button>
     <button class="btn-cancel" id="btn-sl-close" type="button">Fermer</button>
   </div>
+  <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">
+    <div style="font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Backup</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="tbtn" id="btn-sl-export" type="button" style="font-size:9px;padding:7px 12px;">⬇ Exporter</button>
+      <button class="tbtn imp" id="btn-sl-import-btn" type="button" style="font-size:9px;padding:7px 12px;">⬆ Restaurer</button>
+      <input type="file" id="sl-import-file" accept=".json" style="display:none;">
+    </div>
+    <div id="sl-import-confirm" style="display:none;margin-top:10px;padding:10px;background:rgba(200,168,75,.05);border:1px solid var(--gold-dim);border-radius:4px;">
+      <div id="sl-import-info" style="font-size:10px;color:var(--white);letter-spacing:.1em;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-imp" id="btn-sl-import-replace" type="button" style="background:rgba(192,57,43,.1);border-color:rgba(192,57,43,.5);color:#e74c3c;flex:none;font-size:10px;">Remplacer tout</button>
+        <button class="btn-imp" id="btn-sl-import-merge" type="button" style="flex:none;font-size:10px;">Ajouter aux existantes</button>
+        <button class="btn-cancel" id="btn-sl-import-cancel" type="button" style="flex:none;font-size:10px;">Annuler</button>
+      </div>
+    </div>
+  </div>
 </div></div>
--->
 <div class="overlay" id="texte-ov"><div class="import-box"><div class="import-title">📋 Texte</div><div class="import-sub">Export de la setlist — modifie et applique pour importer</div><textarea class="import-ta" id="texte-ta" placeholder="La setlist apparaîtra ici…"></textarea><div class="import-hint">Formats : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note</code><br>Ligne vide, <code>---</code> ou <code>--- Étiquette ---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-copy-texte" type="button">⎘ Copier</button><button class="btn-imp" id="btn-apply-texte" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Appliquer</button><button class="btn-cancel" id="btn-cancel-texte" type="button">Fermer</button></div></div></div>
 <div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-header"><div class="sheet-ttl" id="sh-name">—</div><button class="sheet-close-top" id="sh-close" type="button" title="Fermer">✕</button></div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><div class="sh-lbl">🔗 Lien privé <span style="font-weight:normal;opacity:.6">(non imprimé)</span></div><input type="url" class="sh-inp" id="sh-private-url" placeholder="https://youtu.be/…"><div class="sh-lbl">📝 Note privée <span style="font-weight:normal;opacity:.6">(non imprimée)</span></div><textarea class="sh-inp" id="sh-private-note" placeholder="Accord de départ, arrangements, remarques…" style="resize:vertical;min-height:72px;line-height:1.5;font-family:'Space Mono',monospace;font-size:12px;"></textarea></div></div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo" type="button">Annuler</button></div>
@@ -719,10 +729,11 @@ function lsSave(){
   slot.bandName     = $('band-name').value;
   slot.footerVenue  = $('footer-venue').value;
   slot.sessionName  = $('share-session-name')?.value || '';
-  // Nom affiché dans l'overlay = sessionName si renseigné, sinon bandName
-  slot.name         = slot.sessionName || slot.bandName || 'Sans nom';
+  // slot.name est géré uniquement par slCreate/slRename — jamais écrasé ici
+  if(!slot.name) slot.name = slot.bandName || 'Sans nom';
   slot.savedAt      = new Date().toISOString();
   _slPersist(store);
+  slUpdateIndicator();
   showSaveFlash();
 }
 function lsLoad(){
@@ -732,9 +743,9 @@ function lsLoad(){
   _currentSlotId = slot.id;
   if(store.current !== slot.id){ store.current = slot.id; _slPersist(store); }
   _slApplyState(slot);
+  slUpdateIndicator();
   return slot.savedAt || true;
 }
-/* ── Multi-setlist désactivé — remplacé par sessions WS ──────────────────
 function slCreate(name){
   if(ws&&ws.readyState===WebSocket.OPEN){if(!confirm('Créer une setlist va déconnecter la session WS. Continuer ?'))return; wsDisconnect();}
   clearTimeout(lsTimer);
@@ -747,10 +758,11 @@ function slCreate(name){
   _currentSlotId = id;
   items=[]; headerBadges=store.setlists.find(s=>s.id===id).headerBadges;
   $('band-name').value=name||'Mon Groupe'; $('footer-venue').value='';
+  const sn=$('share-session-name'); if(sn) sn.value='';
   _undoStack=[]; updateUndoBtn();
   renderBadges(); renderList(); syncFooter();
   showToast(`Setlist "${name||'Nouvelle setlist'}" créée`);
-  slRenderList();
+  slUpdateIndicator(); slRenderList();
 }
 function slSwitch(id){
   if(id===_currentSlotId)return;
@@ -766,7 +778,7 @@ function slSwitch(id){
   _slApplyState(slot);
   _undoStack=[]; updateUndoBtn();
   renderBadges(); renderList(); syncFooter();
-  slRenderList();
+  slUpdateIndicator(); slRenderList();
 }
 function slDelete(id){
   clearTimeout(lsTimer); lsTimer=null; lsSave(); // flush avant de toucher au store
@@ -784,19 +796,15 @@ function slDelete(id){
   } else {
     _slPersist(store);
   }
-  slRenderList();
+  slUpdateIndicator(); slRenderList();
 }
 function slRename(id, name){
   const store = slGetAll();
   const slot = store.setlists.find(s=>s.id===id);
   if(slot){
     slot.name = name;
-    slot.sessionName = name;
     _slPersist(store);
-    if(id === _currentSlotId){
-      const sn = $('share-session-name');
-      if(sn) sn.value = name;
-    }
+    if(id === _currentSlotId) slUpdateIndicator();
   }
 }
 function slRenderList(){
@@ -806,7 +814,7 @@ function slRenderList(){
   store.setlists.forEach(slot=>{
     const songs=slot.items?slot.items.filter(i=>i.type==='song').length:0;
     const d=document.createElement('div'); d.className='sl-item'+(slot.id===store.current?' sl-active':'');
-    const displayName = slot.sessionName || slot.name || slot.bandName || 'Sans nom';
+    const displayName = slot.name || slot.bandName || 'Sans nom';
     const nm=document.createElement('span'); nm.className='sl-name'; nm.textContent=displayName;
     nm.contentEditable='true'; nm.spellcheck=false;
     nm.addEventListener('blur',()=>{
@@ -816,13 +824,76 @@ function slRenderList(){
     nm.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();nm.blur();}});
     const meta=document.createElement('span'); meta.className='sl-meta'; meta.textContent=songs+' titre'+(songs!==1?'s':'');
     const del=document.createElement('button'); del.className='sl-del'; del.textContent='×'; del.title='Supprimer';
-    del.onclick=e=>{e.stopPropagation();if(confirm(`Supprimer "${slot.name}" ?`))slDelete(slot.id);};
+    del.onclick=e=>{e.stopPropagation();if(confirm(`Supprimer "${displayName}" ?`))slDelete(slot.id);};
     d.appendChild(nm); d.appendChild(meta); d.appendChild(del);
-    d.onclick=e=>{if(e.target!==del&&!nm.contains(e.target))slSwitch(slot.id);};
+    d.onclick=e=>{if(e.target!==del&&!nm.contains(e.target)){slSwitch(slot.id);$('setlists-ov').classList.remove('open');}};
     el.appendChild(d);
   });
 }
-────────────────────────────────────────────────────────────────────────── */
+function slUpdateIndicator(){
+  const el = $('sl-indicator-lbl');
+  if(!el) return;
+  const store = _slStore();
+  if(!store) return;
+  const slot = store.setlists.find(s=>s.id===_currentSlotId)||store.setlists[0];
+  if(!slot) return;
+  const name = slot.name || slot.bandName || 'Setlist';
+  el.textContent = name.length > 18 ? name.slice(0,17)+'…' : name;
+}
+let _pendingImport = null;
+function slExportBackup(){
+  const store = slGetAll();
+  const json = JSON.stringify(store, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'setlist_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Backup exporté');
+}
+function slImportBackup(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    let store;
+    try { store = JSON.parse(e.target.result); } catch { showToast('Fichier invalide — JSON incorrect'); return; }
+    if(!store.setlists||!Array.isArray(store.setlists)||store.setlists.length===0){ showToast('Format incorrect — aucune setlist trouvée'); return; }
+    _pendingImport = store;
+    const n = store.setlists.length;
+    $('sl-import-info').textContent = n+' setlist'+(n>1?'s':'')+' dans le fichier — que faire ?';
+    $('sl-import-confirm').style.display = 'block';
+  };
+  reader.readAsText(file);
+}
+function slImportApply(replace){
+  if(!_pendingImport) return;
+  const incoming = _pendingImport; _pendingImport = null;
+  $('sl-import-confirm').style.display = 'none';
+  if(replace){
+    if(ws&&ws.readyState===WebSocket.OPEN) wsDisconnect();
+    _slPersist(incoming);
+    _currentSlotId = incoming.current;
+    const slot = incoming.setlists.find(s=>s.id===incoming.current)||incoming.setlists[0];
+    if(!slot) return;
+    _slApplyState(slot);
+    _undoStack=[]; updateUndoBtn();
+    renderBadges(); renderList(); syncFooter();
+    slUpdateIndicator(); slRenderList();
+    showToast('Backup restauré — '+incoming.setlists.length+' setlist'+(incoming.setlists.length>1?'s':''));
+  } else {
+    const store = slGetAll();
+    const existingIds = new Set(store.setlists.map(s=>s.id));
+    let added = 0;
+    incoming.setlists.forEach(slot=>{
+      if(existingIds.has(slot.id)) slot = {...slot, id:'sl'+Date.now()+added};
+      store.setlists.push(slot); added++;
+    });
+    _slPersist(store);
+    slRenderList();
+    showToast(added+' setlist'+(added>1?'s':'')+' ajoutée'+(added>1?'s':''));
+  }
+}
 
 let _saveFlashTimer = null;
 function showSaveFlash(){
@@ -1182,13 +1253,16 @@ function wsValidateCode(raw){
   return null; // OK
 }
 
-/* ── Listeners multi-setlist désactivés — remplacés par sessions WS ───────
+// ── Bouton Nouveau ──
 $('btn-new-session').addEventListener('click', ()=>{
   const name = prompt('Nom de la nouvelle setlist ?', 'Nouvelle setlist');
   if(name === null) return;
   slCreate(name.trim() || 'Nouvelle setlist');
 });
+
+// ── Bouton Setlists ──
 $('btn-setlists').addEventListener('click', ()=>{
+  $('sl-import-confirm').style.display = 'none';
   slRenderList();
   $('setlists-ov').classList.add('open');
 });
@@ -1200,24 +1274,14 @@ $('btn-sl-new').addEventListener('click', ()=>{
   slCreate(name.trim() || 'Nouvelle setlist');
   $('setlists-ov').classList.remove('open');
 });
-────────────────────────────────────────────────────────────────────────── */
 
-// ── Bouton Nouveau (reset setlist locale) ──
-$('btn-new-session').addEventListener('click', ()=>{
-  if(!confirm('Remettre la setlist à zéro ?')) return;
-  if(ws&&ws.readyState===WebSocket.OPEN) wsDisconnect();
-  const prev = captureState();
-  items=[]; headerBadges=[{id:'hb'+nextBadgeId++,label:'Mon groupe'},{id:'hb'+nextBadgeId++,label:'Date'}];
-  $('band-name').value='Mon Groupe'; $('footer-venue').value='';
-  const sn=$('share-session-name'); if(sn) sn.value='';
-  _undoStack=[]; updateUndoBtn();
-  renderBadges(); renderList(); syncFooter(); lsSave();
-  showToast('Setlist remise à zéro', ()=>{
-    items=prev.items; headerBadges=prev.headerBadges;
-    $('band-name').value=prev.bandName; $('footer-venue').value=prev.footerVenue;
-    renderBadges(); renderList(); syncFooter(); lsSave();
-  });
-});
+// ── Backup export / import ──
+$('btn-sl-export').addEventListener('click', slExportBackup);
+$('btn-sl-import-btn').addEventListener('click', ()=> $('sl-import-file').click());
+$('sl-import-file').addEventListener('change', e=>{ if(e.target.files[0]) slImportBackup(e.target.files[0]); e.target.value=''; });
+$('btn-sl-import-replace').addEventListener('click', ()=> slImportApply(true));
+$('btn-sl-import-merge').addEventListener('click', ()=> slImportApply(false));
+$('btn-sl-import-cancel').addEventListener('click', ()=>{ $('sl-import-confirm').style.display='none'; _pendingImport=null; });
 
 // ── Bouton Undo ──
 $('btn-undo').addEventListener('click', undoLast);
