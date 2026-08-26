@@ -23,6 +23,7 @@ jobs:
             **/.git*/**
             **/node_modules/**
             **/server/**
+            tests/**
             CLAUDE.md
             claude.md
             LICENSE

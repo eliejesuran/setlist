@@ -8,10 +8,12 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
+// Surchargeables par variables d'environnement (défauts inchangés) — permet de
+// tester les limites sans toucher au code, et de les ajuster sur Render.
 const PORT           = process.env.PORT || 3001;
-const SESSION_TTL_MS = 15* 24 * 60 * 60 * 1000;  // 15 jours d'inactivité → expiration
-const MAX_SESSIONS   = 100;
-const MAX_PEERS      = 20;
+const SESSION_TTL_MS = +process.env.SESSION_TTL_MS || 15 * 24 * 60 * 60 * 1000;  // 15 j d'inactivité
+const MAX_SESSIONS   = +process.env.MAX_SESSIONS   || 100;
+const MAX_PEERS      = +process.env.MAX_PEERS      || 20;
 
 // Anti-bot
 const ALLOWED_ORIGINS = [
@@ -27,8 +29,8 @@ const ALLOWED_ORIGINS = [
 // origin="null" est envoyé par les navigateurs quand le fichier est ouvert
 // en file:// ou depuis un contexte opaque — on l'autorise explicitement
 const ALLOW_NULL_ORIGIN = true;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;  // fenêtre de 1 minute
-const RATE_LIMIT_MAX       = 10;          // max 10 connexions par IP par minute
+const RATE_LIMIT_WINDOW_MS = +process.env.RATE_LIMIT_WINDOW_MS || 60 * 1000;  // fenêtre de 1 minute
+const RATE_LIMIT_MAX       = +process.env.RATE_LIMIT_MAX       || 10;        // connexions/IP/fenêtre
 
 // ─── État en mémoire ──────────────────────────────────────────────────────────
 
@@ -217,7 +219,9 @@ wss.on('connection', (ws, req) => {
         const name = typeof msg.name === 'string' ? msg.name.trim().slice(0, 24) : '';
         ws._peerName = name || 'Anonyme';
         const names = getPeerNames(session);
-        broadcast(session, { type: 'peers_update', names, peers: session.clients.size });
+        // `broadcast` sans exclusion touchait déjà l'émetteur : il recevait peers_update
+        // en double. On exclut l'émetteur du broadcast, le `send` ci-dessous le sert.
+        broadcast(session, { type: 'peers_update', names, peers: session.clients.size }, ws);
         send(ws,           { type: 'peers_update', names, peers: session.clients.size });
         break;
       }

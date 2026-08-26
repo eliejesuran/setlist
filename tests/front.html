@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Tests — Setlist (front)</title>
+<style>
+ body{font-family:ui-monospace,Menlo,monospace;background:#111;color:#eee;padding:24px;line-height:1.5}
+ h1{font-size:18px;letter-spacing:.1em;text-transform:uppercase;color:#c8a84b;margin:0 0 4px}
+ .hint{color:#888;font-size:12px;margin-bottom:16px}
+ #sum{font-size:15px;padding:10px 14px;border:1px solid #333;border-radius:4px;margin-bottom:14px;background:#181818}
+ .grp{color:#c8a84b;margin:16px 0 6px;font-size:13px;letter-spacing:.08em;border-bottom:1px solid #2a2a2a;padding-bottom:4px}
+ li{list-style:none;font-size:13px;padding:2px 0}
+ .ok::before{content:'✔ ';color:#58d68d} .ko::before{content:'✖ ';color:#e74c3c}
+ .sk::before{content:'– ';color:#888} .sk{color:#888}
+ .ko{color:#e74c3c} pre{color:#e79a95;font-size:12px;margin:2px 0 6px 18px;white-space:pre-wrap}
+ iframe{position:fixed;left:-3000px;top:0;width:1000px;height:700px;border:0}
+</style>
+</head>
+<body>
+<h1>Batterie de tests — front</h1>
+<div class="hint">Charge le vrai <code>index.html</code> dans une iframe et teste les fonctions réelles.
+À servir en HTTP (<code>npx serve</code> à la racine puis <code>/tests/front.html</code>) — le <code>file://</code> bloque l'accès à l'iframe.</div>
+<div id="sum">Exécution…</div>
+<ol id="out"></ol>
+<iframe id="app"></iframe>
+<script>
+const out=document.getElementById('out'), sum=document.getElementById('sum');
+const R={pass:0,fail:0,skip:0,details:[]};
+const li=(cls,txt,err)=>{const l=document.createElement('li');l.className=cls;l.textContent=txt;
+  if(err){const p=document.createElement('pre');p.textContent=err;l.appendChild(p);}out.appendChild(l);};
+const grp=n=>{const d=document.createElement('div');d.className='grp';d.textContent=n;out.appendChild(d);};
+async function t(nom,fn){
+  try{
+    const r=await fn();
+    if(r==='skip'){R.skip++;li('sk',nom+' — ignoré (fonction absente sur cette branche)');R.details.push(['skip',nom]);}
+    else{R.pass++;li('ok',nom);R.details.push(['pass',nom]);}
+  }catch(e){R.fail++;li('ko',nom,e&&e.message||String(e));R.details.push(['fail',nom,e&&e.message||String(e)]);}
+}
+const ok=(c,m)=>{if(!c)throw new Error(m||'assertion fausse')};
+const eq=(a,b,m)=>{const A=JSON.stringify(a),B=JSON.stringify(b);
+  if(A!==B)throw new Error((m||'valeurs différentes')+'\n  attendu : '+B+'\n  reçu    : '+A)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* Les `const`/`let` de haut niveau d'un script classique ne sont pas des propriétés
+   de window : on injecte un pont DANS l'iframe pour y accéder (lecture ET écriture). */
+const PONT = `window.__T = {
+  get win(){return window}, get document(){return document},
+  getComputedStyle: (...a)=>window.getComputedStyle(...a), Event: window.Event,
+  get items(){return items}, set items(v){items=v},
+  get headerBadges(){return headerBadges}, set headerBadges(v){headerBadges=v},
+  get nextId(){return nextId}, get nextBadgeId(){return nextBadgeId},
+  get _currentSlotId(){return _currentSlotId},
+  get ws(){return ws}, get wsSessionId(){return wsSessionId},
+  get _wsPingTimer(){return _wsPingTimer},
+  get _wsPendingState(){return _wsPendingState},
+  get _wsLastModified(){return _wsLastModified}, set _wsLastModified(v){_wsLastModified=v},
+  set _wsReconnectDelay(v){_wsReconnectDelay=v},
+  get WS_SERVER(){return WS_SERVER},
+  $, parseDur, fmtDur, mob, canNativeShare, subBefore, updateTotals,
+  parseImport, exportImportFormat, buildPdfHtml, renderList, renderBadges, syncFooter,
+  pushUndo, undoLast, showToast, slGetAll, lsSave, lsLoad,
+  wsConnect, wsDisconnect, wsPatch, wsValidateCode, wsRandomId,
+  slCreate: typeof slCreate === 'function' ? slCreate : undefined,
+  slSwitch: typeof slSwitch === 'function' ? slSwitch : undefined,
+};`;
+
+function reload(qs){
+  return new Promise(res=>{
+    const f=document.getElementById('app');
+    f.onload=()=>setTimeout(()=>{
+      const d=f.contentWindow.document, sc=d.createElement('script');
+      sc.textContent=PONT; d.body.appendChild(sc);
+      res(f.contentWindow.__T);
+    },40);
+    f.src='../index.html?_t='+Date.now()+(qs?'&'+qs:'');
+  });
+}
+
+/* Remplace le vrai WebSocket dans l'iframe et capture ce qui est émis. */
+function installFake(W){
+  const suivi={urls:[],envois:[],fake:null};
+  class Fake{
+    static CONNECTING=0; static OPEN=1; static CLOSING=2; static CLOSED=3;
+    constructor(url){suivi.urls.push(url);this.readyState=1;suivi.fake=this;}
+    send(d){suivi.envois.push(JSON.parse(d));}
+    close(){this.readyState=3;}
+  }
+  W.win.WebSocket=Fake;
+  // Une vraie coupure passe readyState à CLOSED *avant* onclose : l'app s'appuie
+  // dessus pour décider de se reconnecter. Le simuler fidèlement.
+  suivi.coupure=code=>{suivi.fake.readyState=3; suivi.fake.onclose({code});};
+  return suivi;
+}
+
+const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e6),
+  title:'',artist:'',duration:'0:00',comment:'',privateUrl:'',privateNote:''},o);
+
+(async function(){
+  let W;
+
+  /* ─────────────── Formats & parsing ─────────────── */
+  grp('Durées et totaux');
+  W=await reload();
+  await t('parseDur / fmtDur : aller-retour et cas limites',()=>{
+    eq(W.parseDur('3:45'),225); eq(W.parseDur('0:00'),0); eq(W.parseDur(''),0);
+    eq(W.parseDur('12:05'),725,'minutes à 2 chiffres');
+    eq(W.parseDur('90'),90,'valeur sans deux-points = secondes');
+    eq(W.fmtDur(225),'3:45'); eq(W.fmtDur(5),'0:05'); eq(W.fmtDur(3600),'60:00');
+    eq(W.fmtDur(W.parseDur('7:09')),'7:09');
+  });
+  await t('durée totale et sous-totaux par bloc',async()=>{
+    W.items=[song({title:'A',duration:'3:00'}),song({title:'B',duration:'2:30'}),
+             {type:'sep',id:'sep1',label:'Pause'},song({title:'C',duration:'1:15'})];
+    W.renderList(); await sleep(20);
+    eq(W.$('total-time').textContent,'6:45','durée totale');
+    eq(W.$('total-count').textContent,'3 titres');
+    eq(W.subBefore(2),330,'sous-total avant le séparateur = 5:30');
+    eq(W.subBefore(0),0,'aucun titre avant l\'index 0');
+    W.items=[song({duration:'1:00'})]; W.renderList(); await sleep(20);
+    eq(W.$('total-count').textContent,'1 titre','singulier');
+  });
+
+  grp('Import texte');
+  W=await reload();
+  await t('un titre à trait d\'union n\'est pas découpé (régression)',()=>{
+    const i=W.parseImport('Non-Stop - Elvis - 3:45 - Intro batterie').imported[0];
+    eq([i.title,i.artist,i.duration,i.comment],['Non-Stop','Elvis','3:45','Intro batterie']);
+    eq(W.parseImport('Jean-Jacques Goldman').imported[0].title,'Jean-Jacques Goldman');
+  });
+  await t('le slot artiste vide est conservé (pas de décalage des champs)',()=>{
+    const i=W.parseImport('Fever -  - 3:45 - Note de scène').imported[0];
+    eq([i.title,i.artist,i.duration,i.comment],['Fever','','3:45','Note de scène']);
+  });
+  await t('en-têtes ##BAND / ##VENUE / ##BADGES / ##PRINT',()=>{
+    const r=W.parseImport('##BAND: Les Tests\n##VENUE: AB\n##BADGES: Lieu | Date\n'+
+                          '##PRINT: timing=true artist=false comment=true\nFever');
+    eq(r.bandParsed,'Les Tests'); eq(r.venueParsed,'AB'); eq(r.badgesParsed,['Lieu','Date']);
+    eq(r.printParsed,{timing:true,artist:false,comment:true});
+    eq(r.imported.length,1,'les en-têtes ne créent pas de titre');
+  });
+  await t('séparateurs : ligne vide et ---, jamais en tête, en queue ni en double',()=>{
+    const r=W.parseImport('\n\nA\n\n\nB\n---\n---\nC\n\n\n');
+    eq(r.imported.map(i=>i.type),['song','sep','song','sep','song']);
+  });
+  await t('champs privés &privé: et &note:',()=>{
+    const i=W.parseImport('Fever - Peggy Lee - 3:45 &privé: https://y.tu/x &note: capo 2').imported[0];
+    eq(i.privateUrl,'https://y.tu/x'); eq(i.privateNote,'capo 2');
+    eq(i.title,'Fever','les champs privés ne polluent pas le titre');
+  });
+  await t('aller-retour export → import à l\'identique',async()=>{
+    W.items=[song({title:'Non-Stop',artist:'Elvis',duration:'3:45',comment:'intro batterie'}),
+             {type:'sep',id:'sep9',label:'— Pause —'},
+             song({title:'Sans artiste',duration:'2:30'}),
+             song({title:'Nu'}),
+             song({title:'Privé',artist:'X',duration:'1:00',privateUrl:'https://y.tu/a',privateNote:'capo 2'})];
+    W.$('band-name').value='Les Tests'; W.$('footer-venue').value='AB';
+    const txt=W.exportImportFormat();
+    const r=W.parseImport(txt);
+    eq(r.bandParsed,'Les Tests'); eq(r.venueParsed,'AB');
+    eq(r.imported.map(i=>i.type),['song','sep','song','song','song'],'structure conservée');
+    const av=W.items.filter(i=>i.type==='song'), ap=r.imported.filter(i=>i.type==='song');
+    for(let k=0;k<av.length;k++){
+      eq([ap[k].title,ap[k].artist,ap[k].comment],[av[k].title,av[k].artist,av[k].comment],'titre '+(k+1));
+      eq(ap[k].duration,av[k].duration||'0:00','durée du titre '+(k+1));
+    }
+    eq(ap[3].privateUrl,'https://y.tu/a'); eq(ap[3].privateNote,'capo 2');
+  });
+
+  /* ─────────────── PDF ─────────────── */
+  grp('PDF');
+  W=await reload();
+  await t('échappement HTML de tout texte utilisateur',()=>{
+    const balise = '<scr'+'ipt>alert(1)<\/scr'+'ipt>';   // concaténé : un </scr+ipt> littéral couperait cette page
+    W.items=[song({title:'Rock & <img src=x onerror=alert(1)>',artist:'A & B',
+                   duration:'3:00',comment:'note <b>gras</b>',privateNote:'"guillemets"'})];
+    W.headerBadges=[{id:'hb1',label:balise}];
+    W.$('band-name').value='Groupe & <i>Co</i>'; W.$('footer-venue').value='<AB>';
+    W.$('pdf-include-artist').checked=true; W.$('pdf-include-private-note').checked=true;
+    const h=W.buildPdfHtml('light').html;
+    ok(!/<img src=x/.test(h),'balise img injectée dans le HTML du PDF');
+    ok(!h.includes(balise),'balise script injectée via un badge');
+    ok(h.includes('&lt;scr'+'ipt&gt;'),'le badge doit être échappé');
+    ok(!/<b>gras<\/b>/.test(h),'balise b injectée via un commentaire');
+    ok(h.includes('&lt;img'),'le titre doit être échappé');
+    ok(h.includes('Rock &amp; '),'les esperluettes doivent être échappées');
+    ok(h.includes('&lt;AB&gt;'),'le lieu doit être échappé');
+  });
+  await t('aucun débordement de page, champs privés compris (mesure DOM réelle)',async()=>{
+    W.items=[]; for(let k=0;k<20;k++) W.items.push(song({title:'Titre '+(k+1),artist:'Artiste',
+      duration:'3:30',comment:'Note de scène volontairement longue pour forcer un repli sur plusieurs lignes dans la colonne.',
+      privateUrl:'https://youtu.be/abcdefg',privateNote:'Départ en La mineur, attention au break avant le dernier refrain.'}));
+    ['pdf-include-timing','pdf-include-artist','pdf-include-comment',
+     'pdf-include-private-url','pdf-include-private-note'].forEach(id=>W.$(id).checked=true);
+    const tgt=W.$('pdf-tgt'); tgt.style.width='794px'; tgt.innerHTML=W.buildPdfHtml('light').html;
+    await W.document.fonts.ready; await sleep(60);
+    const pages=[...tgt.firstElementChild.children];
+    ok(pages.length>=2,'ce jeu de données doit tenir sur plusieurs pages');
+    pages.forEach((p,i)=>{
+      const c=p.children[1];
+      ok(c.scrollHeight<=c.clientHeight+1,
+        `page ${i+1} : contenu rogné (${c.scrollHeight}px dans ${c.clientHeight}px)`);
+    });
+    tgt.innerHTML=''; tgt.style.width='';
+  });
+  await t('numérotation continue d\'une page à l\'autre, séparateurs non numérotés',()=>{
+    W.items=[]; for(let k=0;k<30;k++) W.items.push(song({title:'T'+(k+1),duration:'3:00'}));
+    W.items.splice(5,0,{type:'sep',id:'sepA',label:'Set 2'});
+    const h=W.buildPdfHtml('light').html;
+    const nums=[...h.matchAll(/min-width:22px;text-align:right;flex-shrink:0;padding-top:5px;">(\d+)</g)].map(m=>+m[1]);
+    eq(nums.length,30,'chaque titre doit porter un numéro');
+    eq(nums,[...Array(30)].map((_,i)=>i+1),'numérotation continue et sans trou');
+  });
+  await t('les options d\'impression sont respectées',()=>{
+    W.items=[song({title:'Fever',artist:'Peggy Lee',duration:'3:45',comment:'intro',
+                   privateUrl:'https://y.tu/x',privateNote:'capo 2'})];
+    const set=v=>['pdf-include-timing','pdf-include-artist','pdf-include-comment',
+                  'pdf-include-private-url','pdf-include-private-note'].forEach(id=>W.$(id).checked=v);
+    set(false);
+    let h=W.buildPdfHtml('light').html;
+    ok(!h.includes('Peggy Lee'),'artiste imprimé alors qu\'il est décoché');
+    ok(!h.includes('3:45'),'timing imprimé alors qu\'il est décoché');
+    ok(!h.includes('intro'),'note de scène imprimée alors qu\'elle est décochée');
+    ok(!h.includes('y.tu/x')&&!h.includes('capo 2'),'champ privé imprimé par défaut');
+    set(true);
+    h=W.buildPdfHtml('light').html;
+    ok(h.includes('Peggy Lee')&&h.includes('3:45')&&h.includes('intro')&&h.includes('capo 2'),
+       'les champs cochés doivent apparaître');
+  });
+
+  /* ─────────────── Persistance ─────────────── */
+  grp('Persistance');
+  localStorage.clear(); W=await reload();
+  await t('une édition de champ, sans changement de structure, est sauvegardée (régression)',async()=>{
+    W.$('btn-add-song').click(); await sleep(3300);
+    const ti=W.document.querySelector('.inp-title'), di=W.document.querySelector('.inp-dur');
+    ti.value='Ma Chanson'; ti.dispatchEvent(new W.Event('input',{bubbles:true}));
+    di.value='4:20';       di.dispatchEvent(new W.Event('input',{bubbles:true}));
+    await sleep(3300);
+    const s=JSON.parse(localStorage.getItem('ssbbb_setlists_v2')).setlists.find(x=>x.id===W._currentSlotId);
+    eq(s.items[0].title,'Ma Chanson'); eq(s.items[0].duration,'4:20');
+  });
+  await t('passage en arrière-plan : sauvegarde immédiate sans attendre le debounce',async()=>{
+    const ti=W.document.querySelector('.inp-title');
+    ti.value='Titre de dernière minute'; ti.dispatchEvent(new W.Event('input',{bubbles:true}));
+    Object.defineProperty(W.document,'visibilityState',{value:'hidden',configurable:true});
+    W.document.dispatchEvent(new W.Event('visibilitychange'));
+    const s=JSON.parse(localStorage.getItem('ssbbb_setlists_v2')).setlists.find(x=>x.id===W._currentSlotId);
+    eq(s.items[0].title,'Titre de dernière minute');
+  });
+  await t('un ssbbb_setlist_v1 corrompu ne casse pas le chargement (régression)',async()=>{
+    localStorage.clear();
+    localStorage.setItem('ssbbb_setlist_v1','{ceci nest pas du json');
+    W=await reload();
+    ok(typeof W.wsConnect==='function','le script doit s\'exécuter jusqu\'au bout');
+    eq(W.slGetAll().setlists.length,1,'un slot neuf doit être créé');
+    ok(W.$('btn-add-song').onclick!==undefined,'les listeners doivent être branchés');
+    W.$('btn-add-song').click();
+    eq(W.items.length,1,'l\'app doit rester utilisable');
+    localStorage.clear();
+  });
+  await t('migration depuis un v1 valide',async()=>{
+    localStorage.clear();
+    localStorage.setItem('ssbbb_setlist_v1',JSON.stringify({bandName:'Ancien Groupe',
+      items:[{type:'song',id:'s1',title:'Legacy',duration:'2:00'}],footerVenue:'Vieux Lieu'}));
+    W=await reload();
+    eq(W.$('band-name').value,'Ancien Groupe'); eq(W.items[0].title,'Legacy');
+    eq(W.$('footer-venue').value,'Vieux Lieu');
+    localStorage.clear();
+  });
+  await t('un store dont "current" pointe dans le vide est réaligné (régression)',async()=>{
+    localStorage.clear();
+    localStorage.setItem('ssbbb_setlists_v2',JSON.stringify({current:'slot-disparu',setlists:[
+      {id:'sl1',name:'Seule',items:[{type:'song',id:'s1',title:'Rescapée',duration:'1:00'}],
+       headerBadges:[{id:'hb1',label:'X'}],bandName:'G',footerVenue:'',savedAt:''}]}));
+    W=await reload();
+    eq(W._currentSlotId,'sl1','_currentSlotId doit suivre le slot réellement chargé');
+    eq(W.items[0].title,'Rescapée');
+    W.$('btn-add-song').click(); await sleep(3300);
+    const st=JSON.parse(localStorage.getItem('ssbbb_setlists_v2'));
+    eq(st.current,'sl1','store.current doit être réaligné');
+    eq(st.setlists[0].items.length,2,'la sauvegarde doit fonctionner');
+    localStorage.clear();
+  });
+  await t('les champs vides ne fuient pas d\'une setlist à l\'autre (régression)',async()=>{
+    W=await reload();
+    if(typeof W.slCreate!=='function') return 'skip';
+    W.$('footer-venue').value='Ancienne Belgique';
+    W.$('footer-venue').dispatchEvent(new W.Event('input',{bubbles:true}));
+    const idA=W._currentSlotId;
+    W.slCreate('Slot B');
+    eq(W.$('footer-venue').value,'','le lieu doit être vide sur une setlist neuve');
+    W.slSwitch(idA);
+    eq(W.$('footer-venue').value,'Ancienne Belgique','le lieu doit revenir sur la setlist d\'origine');
+    localStorage.clear();
+  });
+
+  /* ─────────────── Undo ─────────────── */
+  grp('Annulation');
+  W=await reload();
+  await t('undo restaure items, badges, nom du groupe et lieu — y compris vides',async()=>{
+    W.items=[song({title:'A'})]; W.headerBadges=[{id:'hb1',label:'Badge A'}];
+    W.$('band-name').value='Groupe A'; W.$('footer-venue').value='';
+    W.pushUndo();
+    W.items=[song({title:'B'}),song({title:'C'})]; W.headerBadges=[{id:'hb2',label:'Badge B'}];
+    W.$('band-name').value='Groupe B'; W.$('footer-venue').value='Lieu B';
+    W.renderList(); W.renderBadges(true);
+    W.undoLast(); await sleep(20);
+    eq(W.items.map(i=>i.title),['A']);
+    eq(W.headerBadges[0].label,'Badge A');
+    eq(W.$('band-name').value,'Groupe A');
+    eq(W.$('footer-venue').value,'','un lieu vide doit être restauré comme vide');
+  });
+  await t('le bouton Annuler reflète l\'état de la pile',async()=>{
+    W=await reload(); await sleep(20);
+    ok(W.$('btn-undo').disabled,'pile vide → bouton désactivé');
+    W.$('btn-add-song').click();
+    ok(!W.$('btn-undo').disabled,'après une action → bouton actif');
+  });
+  await t('le toast n\'affiche "Annuler" que si une annulation existe',async()=>{
+    W.showToast('information');
+    eq(W.getComputedStyle(W.$('toast-undo')).display,'none','toast informatif : bouton masqué');
+    W.showToast('action annulable',()=>{});
+    ok(W.getComputedStyle(W.$('toast-undo')).display!=='none','toast annulable : bouton visible');
+    W.$('toast').classList.remove('show');
+  });
+
+  /* ─────────────── WebSocket ─────────────── */
+  grp('WebSocket (socket simulée)');
+  await t('validation du code de session',async()=>{
+    W=await reload();
+    ok(W.wsValidateCode('abc'),'3 caractères doit être refusé');
+    ok(W.wsValidateCode('a'.repeat(17)),'17 caractères doit être refusé');
+    ok(W.wsValidateCode('repet-42'),'le tiret doit être refusé');
+    ok(W.wsValidateCode('Répét42'),'les accents doivent être refusés');
+    ok(W.wsValidateCode(''),'un code vide doit être refusé');
+    eq(W.wsValidateCode('repet42'),null,'un code valide doit passer');
+    for(let k=0;k<20;k++) eq(W.wsValidateCode(W.wsRandomId()),null,'wsRandomId doit produire un code valide');
+  });
+  await t('à l\'ouverture : identify en premier, jamais un patch (invariant)',async()=>{
+    W=await reload();
+    const S=installFake(W); const envois=S.envois;
+    W.wsConnect('test42'); S.fake.onopen();
+    eq(envois[0].type,'identify','le premier message doit être identify');
+    ok(!envois.some(m=>m.type==='patch'),'aucun patch avant la réception de l\'état serveur');
+    ok(W._wsPingTimer!==null,'le heartbeat doit être armé');
+    eq(S.urls[0],'wss://setlist-21hb.onrender.com/session/test42','URL en wss://');
+  });
+  await t('session vide (joined) → on pousse l\'état local',async()=>{
+    W=await reload();
+    const S=installFake(W); const envois=S.envois;
+    W.items=[song({title:'Locale'})];
+    W.wsConnect('test42'); S.fake.onopen(); envois.length=0;
+    S.fake.onmessage({data:JSON.stringify({type:'joined',peers:1,names:['Anonyme']})});
+    eq(envois[0].type,'patch','sur une session vide on initialise le serveur');
+    eq(envois[0].state.items[0].title,'Locale');
+  });
+  await t('un patch plus ancien que la modif locale est ignoré (anti ping-pong)',async()=>{
+    W=await reload();
+    const S=installFake(W);
+    W.wsConnect('test42'); S.fake.onopen();
+    W.items=[song({title:'Ma version'})]; W._wsLastModified=Date.now();
+    S.fake.onmessage({data:JSON.stringify({type:'patch',state:{items:[song({title:'Vieille version'})],
+      lastModified:W._wsLastModified-5000}})});
+    eq(W.items[0].title,'Ma version','un état plus ancien ne doit pas écraser le local');
+  });
+  await t('un patch reçu pendant la saisie est différé puis appliqué au focusout',async()=>{
+    W=await reload();
+    const S=installFake(W);
+    W.wsConnect('test42'); S.fake.onopen();
+    W.items=[song({title:'En cours'})]; W.renderList(); await sleep(20);
+    const inp=W.document.querySelector('.inp-title'); inp.focus();
+    W._wsLastModified=0;
+    S.fake.onmessage({data:JSON.stringify({type:'patch',state:{items:[song({title:'Du pair'})],
+      bandName:'Pair',lastModified:Date.now()}})});
+    eq(W.items[0].title,'En cours','le patch ne doit pas arracher le clavier');
+    ok(W._wsPendingState,'le patch doit être mis en attente');
+    inp.blur(); W.document.dispatchEvent(new W.Event('focusout',{bubbles:true}));
+    await sleep(30);
+    eq(W.items[0].title,'Du pair','le patch en attente doit être appliqué au focusout');
+  });
+  await t('erreur SESSION_FULL → toast et déconnexion, sans reconnexion',async()=>{
+    W=await reload();
+    const S=installFake(W);
+    W.wsConnect('test42'); S.fake.onopen();
+    S.fake.onmessage({data:JSON.stringify({type:'error',code:'SESSION_FULL',message:'Session pleine (max 20)'})});
+    eq(W.$('toast-msg').textContent,'Session pleine (max 20)');
+    eq(W.wsSessionId,null,'la session doit être abandonnée');
+    eq(W._wsPingTimer,null,'le heartbeat doit être coupé');
+    S.coupure(1008);
+    await sleep(150);
+    eq(S.urls.length,1,'aucune tentative de reconnexion après un refus serveur');
+  });
+  await t('une coupure réseau (code 1006) déclenche bien une reconnexion',async()=>{
+    W=await reload();
+    const S=installFake(W);
+    W.wsConnect('test42'); S.fake.onopen();
+    W._wsReconnectDelay=30;
+    S.coupure(1006);
+    await sleep(250);
+    ok(S.urls.length>1,'une coupure inattendue doit relancer une connexion');
+    W.wsDisconnect();
+  });
+  await t('état distant appliqué : items, badges, nom et lieu vides compris',async()=>{
+    W=await reload();
+    const S=installFake(W);
+    W.$('band-name').value='Local'; W.$('footer-venue').value='Lieu Local';
+    W.wsConnect('test42'); S.fake.onopen();
+    W._wsLastModified=0;
+    S.fake.onmessage({data:JSON.stringify({type:'init',state:{
+      items:[song({title:'Distant',duration:'2:00'})],headerBadges:[{id:'hb9',label:'Distant'}],
+      bandName:'Groupe Distant',footerVenue:'',sessionName:'Répét',lastModified:Date.now()}})});
+    await sleep(30);
+    eq(W.items[0].title,'Distant');
+    eq(W.$('band-name').value,'Groupe Distant');
+    eq(W.$('footer-venue').value,'','un lieu distant vide doit vider le champ local');
+    eq(W.$('share-session-name').value,'Répét');
+    ok(W.nextId>9,'les compteurs d\'ID doivent être réalignés sur l\'état reçu');
+    W.wsDisconnect();
+  });
+
+  localStorage.clear();   // ne pas laisser de données de test à l'app
+  const total=R.pass+R.fail+R.skip;
+  sum.innerHTML=`<b style="color:${R.fail?'#e74c3c':'#58d68d'}">${R.pass}/${total} tests passés</b>`+
+    (R.fail?` · <span style="color:#e74c3c">${R.fail} échec(s)</span>`:'')+
+    (R.skip?` · <span style="color:#888">${R.skip} ignoré(s)</span>`:'');
+  window.__results=R; window.__done=true;
+})();
+</script>
+</body>
+</html>
