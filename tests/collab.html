@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Tests — Sessions collaboratives</title>
+<script src="runner.js"></script>
+</head>
+<body>
+<h1>Tests — sessions collaboratives</h1>
+<div class="hint"><b style="color:#e6b422">Garder cet onglet au premier plan.</b> Un onglet masqué voit ses
+minuteurs bridés par le navigateur (25 ms → 1 s, puis 1 par minute au-delà de 5 minutes masqué) : les tests
+de reconnexion échoueraient sans que l'application soit en cause.<br>
+Plusieurs clients réels (chacun une iframe chargeant <code>index.html</code>) connectés par de
+vraies WebSockets à un <b>vrai serveur local</b>. Prérequis :
+<code>PORT=3099 RATE_LIMIT_MAX=1000 node server/server.js</code>.
+Le serveur cible peut être changé avec <code>?ws=ws://127.0.0.1:3099</code>.</div>
+<div id="sum">Exécution…</div>
+<ol id="out"></ol>
+<script>
+const WS_LOCAL = new URLSearchParams(location.search).get('ws') || 'ws://127.0.0.1:3099';
+const PORT_MORT = 'ws://127.0.0.1:3098';   // rien n'écoute : simule l'absence de réseau
+
+const PONT = `window.__T = {
+  get win(){return window}, get document(){return document},
+  get items(){return items}, set items(v){items=v},
+  get headerBadges(){return headerBadges}, set headerBadges(v){headerBadges=v},
+  get nextId(){return nextId},
+  get ws(){return ws}, get wsSessionId(){return wsSessionId},
+  get _wsPingTimer(){return _wsPingTimer},
+  get _wsPendingState(){return _wsPendingState},
+  get _wsLastModified(){return _wsLastModified}, set _wsLastModified(v){_wsLastModified=v},
+  get _wsReconnectDelay(){return _wsReconnectDelay}, set _wsReconnectDelay(v){_wsReconnectDelay=v},
+  $, parseDur, fmtDur, parseImport, exportImportFormat, renderList, renderBadges, syncFooter,
+  addSong, addSep, wsConnect, wsDisconnect, wsPatch, showToast,
+};`;
+
+const Event_ = (W, t) => new W.win.Event(t, { bubbles: true });
+const sess = () => 't' + Math.random().toString(36).slice(2, 8);
+const song = (o = {}) => Object.assign({ type: 'song', id: 's' + Math.floor(Math.random() * 1e6),
+  title: '', artist: '', duration: '0:00', comment: '', privateUrl: '', privateNote: '' }, o);
+/** Empreinte comparable d'une setlist : structure + toutes les métadonnées. */
+const empreinte = T => T.items.map(i => i.type === 'sep' ? ['sep', i.label]
+  : ['song', i.title, i.artist, i.duration, i.comment, i.privateUrl, i.privateNote]);
+
+async function client(nom) {
+  const f = document.createElement('iframe'); f.className = 'client';
+  document.body.appendChild(f);
+  await new Promise(res => { f.onload = () => setTimeout(res, 50); f.src = '../index.html?_t=' + Date.now(); });
+  const W = f.contentWindow, d = W.document;
+  const sc = d.createElement('script'); sc.textContent = PONT; d.body.appendChild(sc);
+  const T = W.__T;
+  const Real = W.WebSocket;
+  const etat = { horsLigne: false, sockets: [], envois: [] };
+  class LocalWS extends Real {
+    constructor(url, ...r) {
+      const cible = etat.horsLigne ? PORT_MORT : WS_LOCAL;
+      super(String(url).replace(/^wss?:\/\/[^/]+/, cible), ...r);
+      etat.sockets.push(this);
+    }
+    send(data) { etat.envois.push(data.length); super.send(data); }
+  }
+  W.WebSocket = LocalWS;
+  T.nom = nom; T.etat = etat; T.iframe = f;
+  T.$('share-peer-name').value = nom;
+  T.connecte = () => T.ws && T.ws.readyState === 1;
+  /** Coupe le réseau : la socket meurt et les tentatives suivantes échouent.
+   *  `avantReessai` règle le délai de la 1re tentative — les navigateurs brident
+   *  les handshakes WS échoués à répétition, on en garde donc le nombre bas. */
+  T.coupe = (avantReessai = 2500) => {
+    etat.horsLigne = true; T._wsReconnectDelay = avantReessai;
+    etat.sockets[etat.sockets.length - 1].close(4001);
+  };
+  T.retablit = () => { etat.horsLigne = false; T._wsReconnectDelay = 50; };
+  T.detruit = () => { try { T.wsDisconnect(); } catch (e) {} f.remove(); };
+  return T;
+}
+
+async function scene(noms) {
+  // Les iframes partagent le localStorage de l'origine : sans ça, un client neuf
+  // repartirait avec la setlist restaurée du test précédent.
+  localStorage.clear();
+  const id = sess(), cs = [];
+  for (const n of noms) { const c = await client(n); c.wsConnect(id); cs.push(c); }
+  for (const c of cs) await waitFor(() => c.connecte(), `${c.nom} ne s'est pas connecté`, 8000);
+  await sleep(150);
+  return { id, cs, A: cs[0], B: cs[1], C: cs[2], fin: () => cs.forEach(c => c.detruit()) };
+}
+
+/** Résumé d'état d'un client, joint aux messages d'échec. */
+const diag = T => `${T.nom} : ws=${T.ws ? T.ws.readyState : 'null'} sockets=${T.etat.sockets.length} `
+  + `items=${T.items.length} sessionId=${T.wsSessionId} délai=${T._wsReconnectDelay} horsLigne=${T.etat.horsLigne} `
+  + `urls=${T.etat.sockets.map(w => w.url).slice(-2).join(' , ')}`;
+
+/** Le toast ne dure que 4 s : on intercepte showToast à la source plutôt que de
+ *  scruter le DOM — un onglet masqué bride les minuteurs et ferait rater la fenêtre. */
+const guetteToast = T => {
+  const vu = { texte: null, annuler: null };
+  const orig = T.win.showToast;
+  T.win.showToast = (msg, undoFn) => {
+    if (vu.texte === null) { vu.texte = msg; vu.annuler = undoFn || null; }
+    return orig(msg, undoFn);
+  };
+  vu.stop = () => { T.win.showToast = orig; };
+  return vu;
+};
+
+/** Attend que chaque pair ait exactement l'empreinte de la source. Robuste au fait
+ *  qu'une scène partagée porte déjà l'état du test précédent. */
+const converge = async (source, pairs, delai = 6000) => {
+  const cible = JSON.stringify(empreinte(source));
+  for (const p of pairs)
+    await waitFor(() => JSON.stringify(empreinte(p)) === cible,
+      `${p.nom} n'a pas convergé sur l'état de ${source.nom}`, delai,
+      () => diag(p) + '\n  attendu : ' + cible.slice(0, 200) + '\n  reçu    : ' + JSON.stringify(empreinte(p)).slice(0, 200));
+};
+
+/** Applique une mutation puis pousse l'état, comme le fait l'app sur une action. */
+const pousse = (T, fn) => { fn(); T.renderList(); };
+
+// Exposés pour pouvoir rejouer un scénario à la main depuis la console.
+window.__client = client; window.__scene = scene; window.__song = song; window.__empreinte = empreinte;
+
+(async function () {
+  if (new URLSearchParams(location.search).has('manuel')) return;   // ?manuel : ne rien lancer
+  localStorage.clear();
+
+  /* ───────────────────────── Propagation ───────────────────────── */
+  grp('Propagation entre pairs');
+
+  const S1 = await scene(['Alice', 'Bob', 'Carla']);   // scène partagée par les tests sans coupure
+
+  await t('une modification chez A arrive chez B et chez C', async () => {
+    const s = S1;
+    {
+      pousse(s.A, () => s.A.items = [song({ title: 'Fever', artist: 'Peggy Lee', duration: '3:45' })]);
+      await converge(s.A, [s.B, s.C]);
+      eq(s.B.items[0].title, 'Fever'); eq(s.C.items[0].title, 'Fever');
+    }
+  });
+
+  await t('toutes les métadonnées du morceau traversent intactes', async () => {
+    const s = S1;
+    {
+      const ref = song({ title: 'Là-bas « Été » — n°1 & Cie', artist: 'Zoé Ñuñez 🎸',
+        duration: '12:07', comment: 'intro : 4 temps, pédale <forte>',
+        privateUrl: 'https://youtu.be/x?t=42&list=a|b', privateNote: 'accords : Am – F – C\nreprise au 2e couplet' });
+      pousse(s.A, () => s.A.items = [ref]);
+      await converge(s.A, [s.B]);
+      const recu = s.B.items[0];
+      for (const k of ['title', 'artist', 'duration', 'comment', 'privateUrl', 'privateNote'])
+        eq(recu[k], ref[k], 'champ « ' + k + '  » altéré');
+      eq(recu.id, ref.id, 'l\'identifiant doit être conservé');
+    }
+  });
+
+  await t('séparateurs, badges, nom du groupe, lieu et nom de session propagés', async () => {
+    const s = S1;
+    {
+      s.A.headerBadges = [{ id: 'hb1', label: 'AB' }, { id: 'hb2', label: '14 juin' }];
+      s.A.$('band-name').value = 'Les Testeurs';
+      s.A.$('footer-venue').value = 'Ancienne Belgique';
+      s.A.$('share-session-name').value = 'Répét vendredi';
+      pousse(s.A, () => s.A.items = [song({ title: 'A' }), { type: 'sep', id: 'sep1', label: 'PAUSE' }, song({ title: 'B' })]);
+      await converge(s.A, [s.B]);
+      eq(s.B.items[1].label, 'PAUSE', 'le séparateur doit traverser');
+      await waitFor(() => s.B.$('band-name').value === 'Les Testeurs', 'nom du groupe non propagé');
+      eq(s.B.$('footer-venue').value, 'Ancienne Belgique', 'lieu non propagé');
+      eq(s.B.headerBadges.map(b => b.label), ['AB', '14 juin'], 'badges non propagés');
+      eq(s.B.$('share-session-name').value, 'Répét vendredi', 'nom de session non propagé');
+    }
+  });
+
+  await t('suppression et réordonnancement propagés', async () => {
+    const s = S1;
+    {
+      pousse(s.A, () => s.A.items = ['un', 'deux', 'trois'].map(x => song({ title: x })));
+      await converge(s.A, [s.B]);
+      pousse(s.A, () => s.A.items = [s.A.items[2], s.A.items[0]]);   // suppression + réordre
+      await converge(s.A, [s.B]);
+      eq(s.B.items.map(i => i.title), ['trois', 'un'], 'ordre non respecté chez B');
+    }
+  });
+
+  await t('un client qui rejoint en retard reçoit l\'état complet', async () => {
+    const s = S1;
+    {
+      pousse(s.A, () => s.A.items = [...Array(6)].map((_, i) => song({ title: 'T' + (i + 1), duration: '3:00' })));
+      s.A.$('band-name').value = 'Groupe Tardif'; s.A.wsPatch();
+      await sleep(200);
+      const D = await client('Denis'); D.wsConnect(s.id);
+      await waitFor(() => D.connecte(), 'D non connecté', 8000);
+      await converge(s.A, [D]);
+      eq(D.items.length, 6, 'D doit recevoir les 6 titres');
+      eq(D.$('band-name').value, 'Groupe Tardif', 'métadonnées d\'en-tête non reçues');
+      ok(D.nextId > 100, 'les compteurs d\'ID doivent être réalignés');
+      D.detruit();
+    }
+  });
+
+  /* ───────────────────────── Listes de 20 morceaux ───────────────────────── */
+  grp('Listes de 20 morceaux');
+
+  const vingt = () => [...Array(20)].map((_, i) => song({
+    title: 'Morceau n°' + (i + 1), artist: 'Artiste ' + (i + 1),
+    duration: (2 + (i % 4)) + ':' + String((i * 7) % 60).padStart(2, '0'),
+    comment: 'note de scène ' + (i + 1), privateUrl: 'https://youtu.be/id' + i,
+    privateNote: 'note privée ' + (i + 1) + ' — accords, arrangements, remarques diverses',
+  }));
+
+  await t('20 morceaux complets propagés intégralement à deux pairs', async () => {
+    const s = S1;
+    {
+      pousse(s.A, () => s.A.items = vingt());
+      await converge(s.A, [s.B, s.C], 8000);
+      eq(s.B.items.length, 20, 'B doit avoir les 20 morceaux');
+      const total = s.B.items.reduce((a, i) => a + s.B.parseDur(i.duration), 0);
+      ok(total > 0, 'les durées doivent survivre');
+    }
+  });
+
+  await t('20 morceaux : le patch reste très en deçà de la limite serveur de 128 Ko', async () => {
+    const s = S1;
+    {
+      s.A.etat.envois.length = 0;
+      pousse(s.A, () => s.A.items = vingt());
+      await converge(s.A, [s.B], 8000);
+      const max = Math.max(...s.A.etat.envois);
+      ok(max < 131072, `patch de ${max} octets : au-dessus de la limite serveur`);
+      ok(max < 30000, `patch anormalement gros (${max} octets) pour 20 morceaux`);
+    }
+  });
+
+  await t('20 morceaux : éditer un seul champ ne perd aucun autre morceau', async () => {
+    const s = S1;
+    {
+      pousse(s.A, () => s.A.items = vingt());
+      await converge(s.A, [s.B], 8000);
+      const avant = empreinte(s.B);
+      s.A.items[9].comment = 'CHANGÉ EN RÉPÉT'; s.A.wsPatch();
+      await waitFor(() => s.B.items[9].comment === 'CHANGÉ EN RÉPÉT', 'modification non reçue');
+      eq(s.B.items.length, 20, 'aucun morceau ne doit disparaître');
+      const apres = empreinte(s.B);
+      avant[9][4] = 'CHANGÉ EN RÉPÉT';
+      eq(apres, avant, 'seul le champ modifié doit changer');
+    }
+  });
+
+  await t('frappe rapide : 12 patches successifs convergent sur la dernière valeur', async () => {
+    const s = S1;
+    {
+      pousse(s.A, () => s.A.items = [song({ title: '' })]);
+      await converge(s.A, [s.B]);
+      const mot = 'Summertime';
+      for (let k = 1; k <= mot.length; k++) { s.A.items[0].title = mot.slice(0, k); s.A.wsPatch(); await sleep(12); }
+      await waitFor(() => s.B.items[0].title === mot, 'B n\'a pas convergé sur la frappe complète');
+      await sleep(300);
+      eq(s.A.items[0].title, mot, 'A ne doit pas être écrasé par un écho de ses propres patches');
+      eq(s.B.items[0].title, mot, 'B doit rester sur la valeur finale');
+    }
+  });
+
+  /* ───────────────────────── Coupures réseau ───────────────────────── */
+  S1.fin();
+
+  grp('Coupures réseau');
+
+  await t('coupure chez B : A continue d\'éditer, B se reconnecte seul et converge', async () => {
+    const s = await scene(['Alice', 'Bob']);
+    try {
+      pousse(s.A, () => s.A.items = vingt());
+      await waitFor(() => s.B.items.length === 20, 'liste initiale non reçue', 6000);
+      s.B.coupe();
+      await waitFor(() => !s.B.connecte(), 'B aurait dû perdre la connexion');
+      pousse(s.A, () => s.A.items = [...s.A.items.slice(0, 18), song({ title: 'Ajouté pendant la coupure' })]);
+      await sleep(250);
+      eq(s.B.items.length, 20, 'B, hors ligne, garde son état — il ne reçoit rien');
+      s.B.retablit();
+      await waitFor(() => s.B.connecte(), 'B ne s\'est pas reconnecté tout seul', 15000, () => diag(s.B));
+      await waitFor(() => s.B.items.length === 19, 'B n\'a pas resynchronisé après reconnexion', 6000);
+      eq(empreinte(s.B), empreinte(s.A), 'B doit converger sur l\'état de A');
+      ok(s.B._wsPingTimer !== null, 'le heartbeat doit être réarmé après reconnexion');
+    } finally { s.fin(); }
+  });
+
+  await t('coupure chez A qui édite hors ligne : le serveur écrase, un toast permet de récupérer', async () => {
+    const s = await scene(['Alice', 'Bob']);
+    try {
+      pousse(s.A, () => s.A.items = [song({ title: 'Base' })]);
+      await waitFor(() => s.B.items.length === 1, 'état initial non reçu');
+      s.A.coupe();
+      await waitFor(() => !s.A.connecte(), 'A aurait dû perdre la connexion');
+      pousse(s.A, () => s.A.items = [song({ title: 'Base' }), song({ title: 'Écrit hors ligne' })]);
+      await sleep(250);
+      eq(s.B.items.length, 1, 'B ne doit rien recevoir pendant la coupure de A');
+      const toast = guetteToast(s.A);
+      s.A.retablit();
+      await waitFor(() => s.A.connecte(), 'A ne s\'est pas reconnecté', 15000, () => diag(s.A));
+      // Comportement documenté : à l'init, l'état serveur (plus ancien) est appliqué ;
+      // le travail hors ligne n'est récupérable que par le toast d'annulation.
+      await waitFor(() => s.A.items.length === 1, 'l\'état serveur devrait avoir été appliqué', 6000);
+      toast.stop();
+      eq(toast.texte, 'Version distante chargée — annuler ?',
+        'un toast doit signaler que le travail hors ligne a été remplacé');
+      ok(toast.annuler, 'le toast doit proposer une annulation');
+      toast.annuler();
+      await waitFor(() => s.A.items.length === 2, 'l\'annulation doit restaurer le travail hors ligne');
+      eq(s.A.items[1].title, 'Écrit hors ligne');
+      await waitFor(() => s.B.items.length === 2, 'l\'annulation doit être repoussée aux autres pairs', 6000);
+      eq(empreinte(s.B), empreinte(s.A), 'convergence après récupération');
+    } finally { s.fin(); }
+  });
+
+  await t('édition des deux côtés pendant la coupure : convergence sur la version du serveur', async () => {
+    const s = await scene(['Alice', 'Bob']);
+    try {
+      pousse(s.A, () => s.A.items = [song({ title: 'Commun' })]);
+      await waitFor(() => s.B.items.length === 1, 'état initial non reçu');
+      s.B.coupe();
+      await waitFor(() => !s.B.connecte(), 'B aurait dû perdre la connexion');
+      pousse(s.A, () => s.A.items = [song({ title: 'Commun' }), song({ title: 'Côté A' })]);
+      await sleep(30);   // l'arbitrage compare des `<` stricts : deux éditions dans la même
+      pousse(s.B, () => s.B.items = [song({ title: 'Commun' }), song({ title: 'Côté B' })]);
+      await sleep(250);
+      const toast = guetteToast(s.B);
+      s.B.retablit();
+      await waitFor(() => s.B.connecte(), 'B ne s\'est pas reconnecté', 15000, () => diag(s.B));
+      await converge(s.A, [s.B]);
+      toast.stop();
+      eq(s.B.items[1].title, 'Côté A', 'l\'état du serveur fait foi à la reconnexion');
+      eq(toast.texte, 'Version distante chargée — annuler ?',
+        'B doit être averti que sa version hors ligne a été remplacée');
+    } finally { s.fin(); }
+  });
+
+  await t('réseau absent : le client réessaie, avec un délai qui croît à chaque échec', async () => {
+    const s = await scene(['Alice', 'Bob']);
+    try {
+      const avant = s.B.etat.sockets.length, delaiInitial = s.B._wsReconnectDelay;
+      s.B.coupe(300);
+      await waitFor(() => s.B.etat.sockets.length >= avant + 2,
+        'le client doit relancer des tentatives de connexion', 12000, () => diag(s.B));
+      ok(!s.B.connecte(), 'B ne doit pas être connecté tant que le réseau est absent');
+      ok(s.B._wsReconnectDelay > delaiInitial,
+        `le délai doit croître entre les tentatives (${delaiInitial} → ${s.B._wsReconnectDelay})`);
+      ok(s.B._wsReconnectDelay <= 30000, 'le délai doit rester plafonné à 30 s');
+      // La reconnexion effective est couverte par « coupure chez B » ; ici le backoff
+      // a déjà pu grimper à plusieurs secondes, on ne l'attend pas.
+    } finally { s.fin(); }
+  });
+
+  await t('déconnexion volontaire : aucune reconnexion, aucune fuite de patch', async () => {
+    const s = await scene(['Alice', 'Bob']);
+    try {
+      const avant = s.B.etat.sockets.length;
+      s.B.wsDisconnect();
+      await sleep(800);
+      eq(s.B.etat.sockets.length, avant, 'une déconnexion volontaire ne doit pas relancer de connexion');
+      eq(s.B.wsSessionId, null, 'la session doit être oubliée');
+      const fige = JSON.stringify(empreinte(s.B));
+      pousse(s.A, () => s.A.items = [song({ title: 'Après départ de B' })]);
+      await sleep(400);
+      eq(JSON.stringify(empreinte(s.B)), fige, 'B ne doit plus rien recevoir après déconnexion');
+    } finally { s.fin(); }
+  });
+
+  await t('un patch reçu pendant la saisie est différé, puis appliqué au focusout', async () => {
+    const s = await scene(['Alice', 'Bob']);
+    try {
+      pousse(s.B, () => s.B.items = [song({ title: 'En cours de frappe' })]);
+      await waitFor(() => s.A.items.length === 1, 'état initial non reçu');
+      const inp = s.B.document.querySelector('.inp-title'); inp.focus();
+      pousse(s.A, () => s.A.items = [song({ title: 'Version de A' }), song({ title: 'Second' })]);
+      await sleep(400);
+      eq(s.B.items.length, 1, 'le patch ne doit pas arracher le clavier pendant la saisie');
+      ok(s.B._wsPendingState, 'le patch doit être mis en attente');
+      inp.blur(); s.B.document.dispatchEvent(Event_(s.B, 'focusout'));
+      await waitFor(() => s.B.items.length === 2, 'le patch en attente doit être appliqué au focusout');
+      eq(empreinte(s.B), empreinte(s.A), 'convergence après application différée');
+    } finally { s.fin(); }
+  });
+
+  localStorage.clear();
+  finish();
+})();
+</script>
+</body>
+</html>

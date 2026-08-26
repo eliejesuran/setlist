@@ -210,7 +210,7 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
   </div>
 </div></div>
 -->
-<div class="overlay" id="texte-ov"><div class="import-box"><div class="import-title">📋 Texte</div><div class="import-sub">Export de la setlist — modifie et applique pour importer</div><textarea class="import-ta" id="texte-ta" placeholder="La setlist apparaîtra ici…"></textarea><div class="import-hint">Formats : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note</code><br>Ligne vide ou <code>---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-copy-texte" type="button">⎘ Copier</button><button class="btn-imp" id="btn-apply-texte" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Appliquer</button><button class="btn-cancel" id="btn-cancel-texte" type="button">Fermer</button></div></div></div>
+<div class="overlay" id="texte-ov"><div class="import-box"><div class="import-title">📋 Texte</div><div class="import-sub">Export de la setlist — modifie et applique pour importer</div><textarea class="import-ta" id="texte-ta" placeholder="La setlist apparaîtra ici…"></textarea><div class="import-hint">Formats : <code>Titre</code> · <code>Titre - Artiste</code> · <code>Titre - Artiste - timing</code> · <code>Titre - Artiste - timing - Note</code><br>Ligne vide, <code>---</code> ou <code>--- Étiquette ---</code> = séparateur · <code>##BADGES: Lieu | Date</code> = badges</div><div class="import-btns"><button class="btn-imp" id="btn-copy-texte" type="button">⎘ Copier</button><button class="btn-imp" id="btn-apply-texte" type="button" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.5);color:#e74c3c;">↺ Appliquer</button><button class="btn-cancel" id="btn-cancel-texte" type="button">Fermer</button></div></div></div>
 <div class="sheet-ov" id="sheet-ov"><div class="sheet" id="sheet"><div class="sheet-handle"></div><div class="sheet-header"><div class="sheet-ttl" id="sh-name">—</div><button class="sheet-close-top" id="sh-close" type="button" title="Fermer">✕</button></div><div class="sh-lbl">Titre</div><input type="text" class="sh-inp" id="sh-title" placeholder="Titre…"><div class="sh-lbl">Artiste</div><input type="text" class="sh-inp" id="sh-artist" placeholder="Artiste…"><div class="sh-row2"><div style="flex:1"><div class="sh-lbl">Durée</div><input type="text" class="sh-inp sh-dur" id="sh-dur" placeholder="3:45"></div><div style="flex:2"><div class="sh-lbl">Note scène</div><input type="text" class="sh-inp" id="sh-comment" placeholder="Note scène…"></div></div><div class="sh-lbl">🔗 Lien privé <span style="font-weight:normal;opacity:.6">(non imprimé)</span></div><input type="url" class="sh-inp" id="sh-private-url" placeholder="https://youtu.be/…"><div class="sh-lbl">📝 Note privée <span style="font-weight:normal;opacity:.6">(non imprimée)</span></div><textarea class="sh-inp" id="sh-private-note" placeholder="Accord de départ, arrangements, remarques…" style="resize:vertical;min-height:72px;line-height:1.5;font-family:'Space Mono',monospace;font-size:12px;"></textarea></div></div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo" type="button">Annuler</button></div>
 <div class="pdf-ov" id="pdf-ov"><div class="spinner"></div><div class="pdf-txt">Génération du PDF…</div></div><div id="pdf-tgt"></div>
@@ -303,7 +303,8 @@ function exportImportFormat(){
                     +' comment='+$('pdf-include-comment').checked;
 
   const songs = items.map(item=>{
-    if(item.type==='sep') return '---';
+    // L'étiquette du séparateur était perdue à l'export : tout revenait en « — Pause — »
+    if(item.type==='sep') return item.label ? '--- '+item.label+' ---' : '---';
     const parts=[item.title||''];
     // Toujours inclure le slot artiste (vide si absent) dès qu'il y a une durée ou un
     // commentaire — sinon le ré-import décale les champs (note lue comme artiste)
@@ -312,7 +313,9 @@ function exportImportFormat(){
     if(item.comment)  parts.push(item.comment);
     let line = parts.join(' - ');
     if(item.privateUrl)  line += ' &privé: '+item.privateUrl;
-    if(item.privateNote) line += ' &note: '+item.privateNote;
+    // Une note privée est saisie dans un textarea : ses retours à la ligne casseraient
+    // le format ligne à ligne, on les encode.
+    if(item.privateNote) line += ' &note: '+item.privateNote.replace(/\r?\n/g,'\\n');
     return line;
   }).join('\n');
 
@@ -534,10 +537,14 @@ function parseImport(text){
       return;
     }
 
-    if(!raw || raw==='---'){
+    // Séparateur : ligne vide, `---`, ou `--- Étiquette ---`
+    let sepLabel = null;
+    if(!raw || raw==='---') sepLabel = '';
+    else { const m = raw.match(/^---\s*(.+?)\s*---$/); if(m) sepLabel = m[1]; }
+    if(sepLabel !== null){
       const lastItem = imported[imported.length-1];
       if(hasItem && (!lastItem || lastItem.type!=='sep'))
-        imported.push({type:'sep', id:'sep'+nextId++, label:'— Pause —'});
+        imported.push({type:'sep', id:'sep'+nextId++, label: sepLabel || '— Pause —'});
       return;
     }
 
@@ -545,7 +552,7 @@ function parseImport(text){
     let core = raw;
     let privateUrl = '', privateNote = '';
     const noteIdx = core.indexOf(' &note: ');
-    if(noteIdx !== -1){ privateNote = core.slice(noteIdx+8).trim(); core = core.slice(0,noteIdx).trim(); }
+    if(noteIdx !== -1){ privateNote = core.slice(noteIdx+8).trim().replace(/\\n/g,'\n'); core = core.slice(0,noteIdx).trim(); }
     const privIdx = core.indexOf(' &privé: ');
     if(privIdx !== -1){ privateUrl = core.slice(privIdx+9).trim(); core = core.slice(0,privIdx).trim(); }
 
@@ -926,7 +933,8 @@ function wsApplyState(state, isInit=false){
 
   // À la reconnexion (init) : si la version locale est plus récente,
   // appliquer quand même l'état distant mais proposer un undo via toast.
-  if(isInit && state.lastModified && state.lastModified < _wsLastModified){
+  // Rien à perdre si la setlist locale est vide : on applique sans proposer d'annuler.
+  if(isInit && items.length && state.lastModified && state.lastModified < _wsLastModified){
     const snapshot = {items:[...items], headerBadges:[...headerBadges],
       band:$('band-name').value, venue:$('footer-venue').value,
       lastModified: _wsLastModified};
@@ -971,8 +979,11 @@ function _doApplyState(state){
 
 function wsPatch(){
   if(wsSuppressPatch) return;
-  if(!ws || ws.readyState !== WebSocket.OPEN) return;
+  // Horodater AVANT le test de socket : sans ça, les modifications faites hors ligne
+  // ne marquaient pas l'horloge locale, et l'état serveur (plus ancien) les écrasait
+  // en silence à la reconnexion, sans le toast d'annulation prévu.
   _wsLastModified = Date.now();
+  if(!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ type:'patch', state: wsGetState() }));
 }
 

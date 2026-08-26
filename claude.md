@@ -58,6 +58,10 @@ PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thèm
 - Champs vides : appliquer `state.bandName`/`footerVenue` si `!== undefined` (sinon fuite entre slots)
 - PDF : tout texte utilisateur passe par `esc()` avant `tgt.innerHTML`
 - Export texte : slot artiste toujours présent (`Titre -  - 3:45 - Note`) · parser conserve slots vides internes · split `/\s-\s/` (espace obligatoire de chaque côté — protège les titres à trait d'union)
+- Séparateur exporté `--- Étiquette ---` (étiquette perdue avant) · `---` ou ligne vide → `— Pause —`
+- Note privée : retours à la ligne encodés `\n` à l'export, restitués à l'import (sinon morceaux fantômes)
+- `wsPatch()` horodate `_wsLastModified` **avant** le test de socket — sinon les modifs hors ligne ne sont pas datées et l'état serveur les écrase sans toast à la reconnexion
+- Toast « Version distante chargée » seulement si `items.length` (rien à annuler sur une setlist vide)
 - `canNativeShare()` = `navigator.share` **+** touch détecté — ne pas afficher le bouton 📤 sur desktop
 
 ### Messages
@@ -81,6 +85,10 @@ PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thèm
 **Sheet mobile** `openSheet(song)` · `closeSheet()`  
 **Helpers** `mob()` (≤640px ou touch) · `canNativeShare()` (share + touch) · `showToast(msg,undoFn)` · `scheduleAutoSave()`  
 **WS** `wsConnect(id)` · `wsDisconnect()` · `wsPatch()` · `wsApplyState(state,isInit?)` · `_doApplyState(state)` · `wsDoConnect()` · `wsValidateCode(raw)` · `wsRandomId()` · `wsUpdateShareUI()` · `wsUpdatePeersList(names,count)` · `wsUpdateToolbarLabel()` · `wsUpdateTtl()`
+
+## Tests
+`node --test "tests/*.test.mjs"` (16) · `/tests/front` (41) · `/tests/collab` (15, exige `PORT=3099 RATE_LIMIT_MAX=1000 node server/server.js`).
+Détails, pièges et limites assumées du format texte : [tests/README.md](tests/README.md).
 
 ## Backlog actif
 **New features** F1 Enregistrer ses setlists (branche `feat/multi-setlist`) · F2 Avoir l'ensemble d'un répertoire enregistré, et pouvoir simplement cocher pour mettre dans une setlist.

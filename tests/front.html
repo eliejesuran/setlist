@@ -3,43 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <title>Tests — Setlist (front)</title>
-<style>
- body{font-family:ui-monospace,Menlo,monospace;background:#111;color:#eee;padding:24px;line-height:1.5}
- h1{font-size:18px;letter-spacing:.1em;text-transform:uppercase;color:#c8a84b;margin:0 0 4px}
- .hint{color:#888;font-size:12px;margin-bottom:16px}
- #sum{font-size:15px;padding:10px 14px;border:1px solid #333;border-radius:4px;margin-bottom:14px;background:#181818}
- .grp{color:#c8a84b;margin:16px 0 6px;font-size:13px;letter-spacing:.08em;border-bottom:1px solid #2a2a2a;padding-bottom:4px}
- li{list-style:none;font-size:13px;padding:2px 0}
- .ok::before{content:'✔ ';color:#58d68d} .ko::before{content:'✖ ';color:#e74c3c}
- .sk::before{content:'– ';color:#888} .sk{color:#888}
- .ko{color:#e74c3c} pre{color:#e79a95;font-size:12px;margin:2px 0 6px 18px;white-space:pre-wrap}
- iframe{position:fixed;left:-3000px;top:0;width:1000px;height:700px;border:0}
-</style>
+<script src="runner.js"></script>
 </head>
 <body>
 <h1>Batterie de tests — front</h1>
 <div class="hint">Charge le vrai <code>index.html</code> dans une iframe et teste les fonctions réelles.
-À servir en HTTP (<code>npx serve</code> à la racine puis <code>/tests/front.html</code>) — le <code>file://</code> bloque l'accès à l'iframe.</div>
+À servir en HTTP (<code>npx serve</code> à la racine puis <code>/tests/front</code>) — le <code>file://</code> bloque l'accès à l'iframe. <code>?seul=&lt;fragment&gt;</code> ne rejoue qu'un test.</div>
 <div id="sum">Exécution…</div>
 <ol id="out"></ol>
-<iframe id="app"></iframe>
+<iframe id="app" class="client"></iframe>
 <script>
-const out=document.getElementById('out'), sum=document.getElementById('sum');
-const R={pass:0,fail:0,skip:0,details:[]};
-const li=(cls,txt,err)=>{const l=document.createElement('li');l.className=cls;l.textContent=txt;
-  if(err){const p=document.createElement('pre');p.textContent=err;l.appendChild(p);}out.appendChild(l);};
-const grp=n=>{const d=document.createElement('div');d.className='grp';d.textContent=n;out.appendChild(d);};
-async function t(nom,fn){
-  try{
-    const r=await fn();
-    if(r==='skip'){R.skip++;li('sk',nom+' — ignoré (fonction absente sur cette branche)');R.details.push(['skip',nom]);}
-    else{R.pass++;li('ok',nom);R.details.push(['pass',nom]);}
-  }catch(e){R.fail++;li('ko',nom,e&&e.message||String(e));R.details.push(['fail',nom,e&&e.message||String(e)]);}
-}
-const ok=(c,m)=>{if(!c)throw new Error(m||'assertion fausse')};
-const eq=(a,b,m)=>{const A=JSON.stringify(a),B=JSON.stringify(b);
-  if(A!==B)throw new Error((m||'valeurs différentes')+'\n  attendu : '+B+'\n  reçu    : '+A)};
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 /* Les `const`/`let` de haut niveau d'un script classique ne sont pas des propriétés
    de window : on injecte un pont DANS l'iframe pour y accéder (lecture ET écriture). */
@@ -164,6 +137,132 @@ const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e
       eq(ap[k].duration,av[k].duration||'0:00','durée du titre '+(k+1));
     }
     eq(ap[3].privateUrl,'https://y.tu/a'); eq(ap[3].privateNote,'capo 2');
+  });
+
+  grp('Export texte — caractères spéciaux');
+  W = await reload();
+  /** Fait un aller-retour export → import et renvoie le morceau relu. */
+  const allerRetour = (W, morceau, badges) => {
+    W.items = [Object.assign({type:'song',id:'s1',title:'',artist:'',duration:'0:00',
+      comment:'',privateUrl:'',privateNote:''}, morceau)];
+    if (badges) W.headerBadges = badges;
+    const r = W.parseImport(W.exportImportFormat());
+    return { song: r.imported[0], badges: r.badgesParsed, texte: W.exportImportFormat() };
+  };
+
+  await t('accents, emoji, guillemets et esperluettes survivent à l\'aller-retour', () => {
+    const ref = { title: 'Là-bas « Été » n°1 🎸', artist: 'Zoé Ñuñez & Cie',
+                  duration: '12:07', comment: 'intro : 4 temps — attention !' };
+    const { song } = allerRetour(W, ref);
+    for (const k of ['title','artist','duration','comment']) eq(song[k], ref[k], 'champ ' + k);
+  });
+
+  await t('chevrons et apostrophes dans tous les champs', () => {
+    const ref = { title: "L'été <indien>", artist: "D'Anza", duration: '3:00',
+                  comment: "monte d'un ton <fin>", privateUrl: 'https://y.tu/a?b=1&c=2',
+                  privateNote: "capo 2 — l'intro" };
+    const { song } = allerRetour(W, ref);
+    for (const k of ['title','artist','comment','privateUrl','privateNote'])
+      eq(song[k], ref[k], 'champ ' + k);
+  });
+
+  await t('un tiret collé dans le titre est préservé, un tiret entouré d\'espaces sépare', () => {
+    eq(allerRetour(W, { title: 'Non-Stop' }).song.title, 'Non-Stop');
+    eq(allerRetour(W, { title: 'Jean-Jacques Goldman', artist: 'X', duration: '4:00' }).song.title,
+       'Jean-Jacques Goldman');
+    // limite assumée du format : « - » entouré d'espaces est le séparateur de champs
+    const coupe = allerRetour(W, { title: 'Ceci - Cela' }).song;
+    eq([coupe.title, coupe.artist], ['Ceci', 'Cela'],
+       'limite connue : un titre contenant «  -  » est relu comme deux champs');
+  });
+
+  await t('une note privée multiligne survit à l\'aller-retour', () => {
+    const ref = { title: 'Arrangement', privateNote: 'couplet : Am – F\nrefrain : C – G\npont : 2 mesures' };
+    const { song, texte } = allerRetour(W, ref);
+    eq(texte.split('\n').filter(l => l && !l.startsWith('##')).length, 1,
+       'le morceau doit tenir sur une seule ligne exportée');
+    eq(song.privateNote, ref.privateNote, 'note privée multiligne altérée');
+    eq(song.title, 'Arrangement', 'le titre ne doit pas être affecté');
+  });
+
+  await t('un texte ressemblant à une durée dans la note n\'est pas pris pour la durée', () => {
+    const { song } = allerRetour(W, { title: 'Impro', duration: '5:30', comment: 'entrée batterie à 2:15' });
+    eq(song.duration, '5:30');
+    eq(song.comment, 'entrée batterie à 2:15');
+  });
+
+  await t('limite assumée : « &note: » écrit dans une note de scène sert de délimiteur', () => {
+    const { song } = allerRetour(W, { title: 'Piège', comment: 'voir &note: plus bas' });
+    eq([song.title, song.comment, song.privateNote], ['Piège', 'voir', 'plus bas'],
+       'le texte après « &note: » bascule en note privée — limite du format, à ne pas régresser');
+  });
+
+  await t('badges avec accents ; la barre verticale reste un séparateur de badges', () => {
+    const r = allerRetour(W, { title: 'X' }, [{id:'hb1',label:'Ancienne Belgique'},{id:'hb2',label:'14 juin — 21h'}]);
+    eq(r.badges, ['Ancienne Belgique', '14 juin — 21h'], 'badges accentués');
+    const r2 = allerRetour(W, { title: 'X' }, [{id:'hb1',label:'AB | Bruxelles'}]);
+    eq(r2.badges, ['AB', 'Bruxelles'], 'limite connue : « | » découpe le badge en deux');
+  });
+
+  await t('nom de groupe et lieu avec caractères spéciaux', () => {
+    W.items = [{type:'song',id:'s1',title:'A',artist:'',duration:'0:00',comment:'',privateUrl:'',privateNote:''}];
+    W.$('band-name').value = 'Les « Frères » Ñ & Co';
+    W.$('footer-venue').value = 'Café-Théâtre — 1000 Bxl';
+    const r = W.parseImport(W.exportImportFormat());
+    eq(r.bandParsed, 'Les « Frères » Ñ & Co');
+    eq(r.venueParsed, 'Café-Théâtre — 1000 Bxl');
+  });
+
+  await t('un titre qui vaut --- ou une ligne vide ne casse pas la structure', () => {
+    W.items = [
+      {type:'song',id:'s1',title:'Avant',artist:'',duration:'0:00',comment:'',privateUrl:'',privateNote:''},
+      {type:'song',id:'s2',title:'---',  artist:'',duration:'0:00',comment:'',privateUrl:'',privateNote:''},
+      {type:'song',id:'s3',title:'Après',artist:'',duration:'0:00',comment:'',privateUrl:'',privateNote:''}];
+    const r = W.parseImport(W.exportImportFormat());
+    eq(r.imported.map(i => i.type), ['song','song','song'],
+       'un titre valant --- ne doit pas devenir un séparateur');
+    eq(r.imported[1].title, '---', 'le titre --- doit être conservé tel quel');
+  });
+
+  await t('les étiquettes de séparateur survivent à l\'aller-retour', () => {
+    W.items = [
+      {type:'song',id:'s1',title:'A',artist:'',duration:'3:00',comment:'',privateUrl:'',privateNote:''},
+      {type:'sep', id:'sepA', label:'SET 2 — après l\'entracte'},
+      {type:'song',id:'s2',title:'B',artist:'',duration:'3:00',comment:'',privateUrl:'',privateNote:''},
+      {type:'sep', id:'sepB', label:'RAPPEL'},
+      {type:'song',id:'s3',title:'C',artist:'',duration:'3:00',comment:'',privateUrl:'',privateNote:''}];
+    const r = W.parseImport(W.exportImportFormat());
+    eq(r.imported.filter(i => i.type === 'sep').map(i => i.label),
+       ['SET 2 — après l\'entracte', 'RAPPEL'], 'étiquettes de séparateur perdues');
+    eq(r.imported.map(i => i.type), ['song','sep','song','sep','song'], 'structure altérée');
+  });
+
+  await t('un séparateur sans étiquette reste lisible et relu par défaut', () => {
+    W.items = [
+      {type:'song',id:'s1',title:'A',artist:'',duration:'3:00',comment:'',privateUrl:'',privateNote:''},
+      {type:'sep', id:'sepA', label:''},
+      {type:'song',id:'s2',title:'B',artist:'',duration:'3:00',comment:'',privateUrl:'',privateNote:''}];
+    const txt = W.exportImportFormat();
+    ok(txt.split('\n').includes('---'), 'un séparateur nu doit s\'exporter en « --- »');
+    const r = W.parseImport(txt);
+    eq(r.imported.map(i => i.type), ['song','sep','song']);
+    eq(r.imported[1].label, '— Pause —', 'étiquette par défaut');
+  });
+
+  await t('une setlist de 20 morceaux entièrement renseignés fait un aller-retour exact', () => {
+    W.items = [...Array(20)].map((_, i) => ({ type:'song', id:'s'+(200+i),
+      title:'Morceau n°'+(i+1)+' — « spécial »', artist:'Artiste '+(i+1)+' & Co',
+      duration:(2+(i%4))+':'+String((i*7)%60).padStart(2,'0'),
+      comment:'note de scène '+(i+1)+' : attention à l\'entrée',
+      privateUrl:'https://youtu.be/id'+i+'?t=42', privateNote:'accords '+(i+1) }));
+    W.items.splice(10, 0, { type:'sep', id:'sepX', label:'— PAUSE —' });
+    const avant = W.items.map(i => i.type==='sep' ? ['sep',i.label]
+      : ['song',i.title,i.artist,i.duration,i.comment,i.privateUrl,i.privateNote]);
+    const r = W.parseImport(W.exportImportFormat());
+    const apres = r.imported.map(i => i.type==='sep' ? ['sep',i.label]
+      : ['song',i.title,i.artist,i.duration,i.comment,i.privateUrl,i.privateNote]);
+    eq(apres.length, avant.length, 'nombre d\'éléments');
+    for (let k = 0; k < avant.length; k++) eq(apres[k], avant[k], 'élément ' + (k+1));
   });
 
   /* ─────────────── PDF ─────────────── */
@@ -419,11 +518,7 @@ const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e
   });
 
   localStorage.clear();   // ne pas laisser de données de test à l'app
-  const total=R.pass+R.fail+R.skip;
-  sum.innerHTML=`<b style="color:${R.fail?'#e74c3c':'#58d68d'}">${R.pass}/${total} tests passés</b>`+
-    (R.fail?` · <span style="color:#e74c3c">${R.fail} échec(s)</span>`:'')+
-    (R.skip?` · <span style="color:#888">${R.skip} ignoré(s)</span>`:'');
-  window.__results=R; window.__done=true;
+  finish();
 })();
 </script>
 </body>
