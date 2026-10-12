@@ -53,6 +53,8 @@ PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thèm
 - `init` (session existante) → `wsApplyState(state, true)` ; si distant < local → appliquer + toast undo
 - `patch` reçu → ignoré si `lastModified < _wsLastModified` (anti-ping-pong) ; différé si saisie active → appliqué au `focusout`
 - `btn-new-session` → `slCreate(nom)` (prompt) — crée un slot, déconnecte le WS après confirm
+- `slSwitch` : vérifier que le slot existe **avant** de toucher `_currentSlotId`/`store.current` — sinon toute sauvegarde ultérieure échoue en silence
+- `_slApplyState` : un champ absent vaut vide (`items`/`headerBadges` → `[]`) — sinon un slot incomplet hérite du contenu de la setlist précédente, que l'autosave y réécrit ensuite
 - `wsConnect` = `wss://` (pas `https://` : SyntaxError sur Safari ancien) · heartbeat `ping` 30s (`_wsPingTimer`)
 - `onclose` code **1008** (refus serveur : session pleine / URL invalide) → pas de reconnexion
 - `{type:'error'}` reçu → toast + `wsDisconnect()` si `SESSION_FULL`
@@ -88,7 +90,7 @@ PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thèm
 **WS** `wsConnect(id)` · `wsDisconnect()` · `wsPatch()` · `wsApplyState(state,isInit?)` · `_doApplyState(state)` · `wsDoConnect()` · `wsValidateCode(raw)` · `wsRandomId()` · `wsUpdateShareUI()` · `wsUpdatePeersList(names,count)` · `wsUpdateToolbarLabel()` · `wsUpdateTtl()`
 
 ## Tests
-`node --test "tests/*.test.mjs"` (16) · `/tests/front` (41) · `/tests/collab` (15, exige `PORT=3099 RATE_LIMIT_MAX=1000 node server/server.js`).
+`node --test "tests/*.test.mjs"` (16) · `/tests/front` (41) · `/tests/collab` (15, exige `PORT=3099 RATE_LIMIT_MAX=1000 node server/server.js`) · `/tests/multisetlist` (18, cette branche).
 Détails, pièges et limites assumées du format texte : [tests/README.md](tests/README.md).
 
 ## Backlog actif

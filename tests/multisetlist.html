@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Tests — Multi-setlist</title>
+<script src="runner.js"></script>
+</head>
+<body>
+<h1>Tests — multi-setlist et backup</h1>
+<div class="hint">Charge le vrai <code>index.html</code> dans une iframe et pilote les fonctions réelles
+(<code>slCreate</code>, <code>slSwitch</code>, <code>slDelete</code>, backup JSON…).
+À servir en HTTP : <code>npx serve -p 3000 .</code> puis <code>/tests/multisetlist</code>.
+<code>?seul=&lt;fragment&gt;</code> ne rejoue qu'un test.</div>
+<div id="sum">Exécution…</div>
+<ol id="out"></ol>
+<iframe id="app" class="client"></iframe>
+<script>
+const PONT = `window.__T = {
+  get win(){return window}, get document(){return document},
+  get items(){return items}, set items(v){items=v},
+  get headerBadges(){return headerBadges}, set headerBadges(v){headerBadges=v},
+  get nextId(){return nextId}, get nextBadgeId(){return nextBadgeId},
+  get _currentSlotId(){return _currentSlotId},
+  get _pendingImport(){return _pendingImport},
+  get ws(){return ws},
+  $, slGetAll, _slStore, _slPersist, _slApplyState, lsSave, lsLoad,
+  slCreate, slSwitch, slDelete, slRename, slRenderList, slUpdateIndicator,
+  slExportBackup, slImportBackup, slImportApply,
+  renderList, renderBadges, syncFooter, showToast, parseDur,
+};`;
+
+function reload() {
+  return new Promise(res => {
+    const f = document.getElementById('app');
+    f.onload = () => setTimeout(() => {
+      const d = f.contentWindow.document, sc = d.createElement('script');
+      sc.textContent = PONT; d.body.appendChild(sc);
+      res(f.contentWindow.__T);
+    }, 40);
+    f.src = '../index.html?_t=' + Date.now();
+  });
+}
+const neuf = async () => { localStorage.clear(); return reload(); };
+const song = (o = {}) => Object.assign({ type:'song', id:'s'+Math.floor(Math.random()*1e6),
+  title:'', artist:'', duration:'0:00', comment:'', privateUrl:'', privateNote:'' }, o);
+const store = W => W.slGetAll();
+const noms = W => store(W).setlists.map(s => s.name);
+/** Capture le backup JSON sans déclencher de téléchargement. */
+async function capteBackup(W) {
+  const anc = W.win.HTMLAnchorElement.prototype, clicOrig = anc.click;
+  const creerOrig = W.win.URL.createObjectURL, revoquerOrig = W.win.URL.revokeObjectURL;
+  let blob = null;
+  anc.click = function () {};
+  W.win.URL.createObjectURL = b => { blob = b; return 'blob:test'; };
+  W.win.URL.revokeObjectURL = () => {};
+  try { W.slExportBackup(); } finally {
+    anc.click = clicOrig; W.win.URL.createObjectURL = creerOrig; W.win.URL.revokeObjectURL = revoquerOrig;
+  }
+  return JSON.parse(await blob.text());
+}
+/** Dépose un fichier de backup et attend que l'app l'ait lu. */
+async function deposeBackup(W, contenu) {
+  const txt = typeof contenu === 'string' ? contenu : JSON.stringify(contenu);
+  W.slImportBackup(new W.win.File([txt], 'backup.json', { type: 'application/json' }));
+  try { await waitFor(() => W._pendingImport !== null, 'fichier non lu', 2000); } catch (e) {}
+}
+
+(async function () {
+  let W;
+
+  grp('Création et bascule');
+
+  await t('slCreate crée un slot vide, nommé, et le rend courant', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'Dans la première' })]; W.renderList();
+    W.slCreate('Concert AB');
+    eq(W.items, [], 'la nouvelle setlist doit être vide');
+    eq(W.$('band-name').value, 'Concert AB', 'le nom du groupe reprend le nom donné');
+    eq(W.$('footer-venue').value, '', 'le lieu doit être vide');
+    eq(W.headerBadges.map(b => b.label), ['Mon groupe', 'Date'], 'badges par défaut');
+    const st = store(W);
+    eq(st.current, W._currentSlotId, 'store.current doit suivre le slot courant');
+    eq(st.setlists.length, 2, 'deux setlists en magasin');
+    eq(W.$('sl-indicator-lbl').textContent, 'Concert AB', 'indicateur de la toolbar');
+  });
+
+  await t('la setlist précédente est sauvegardée avant la bascule', async () => {
+    W = await neuf();
+    const idA = W._currentSlotId;
+    W.items = [song({ title: 'Fever', duration: '3:45' })]; W.renderList();
+    W.slCreate('Deuxième');
+    const slotA = store(W).setlists.find(s => s.id === idA);
+    eq(slotA.items.length, 1, 'le contenu de la première doit être persisté');
+    eq(slotA.items[0].title, 'Fever');
+    W.slSwitch(idA);
+    eq(W.items.map(i => i.title), ['Fever'], 'retour sur la première setlist');
+    eq(W._currentSlotId, idA);
+  });
+
+  await t('bascule aller-retour avec 20 morceaux entièrement renseignés', async () => {
+    W = await neuf();
+    const idA = W._currentSlotId;
+    W.items = [...Array(20)].map((_, i) => song({ title:'M'+(i+1), artist:'A'+i, duration:'3:0'+(i%10),
+      comment:'note '+i, privateUrl:'https://y.tu/'+i, privateNote:'privée '+i }));
+    W.items.splice(10, 0, { type:'sep', id:'sep999', label:'SET 2' });
+    const avant = JSON.stringify(W.items);
+    W.renderList();
+    W.slCreate('Vide');
+    eq(W.items.length, 0);
+    W.slSwitch(idA);
+    eq(JSON.stringify(W.items), avant, 'les 21 éléments doivent revenir à l\'identique');
+    ok(W.nextId > 999, 'nextId doit être réaligné au-dessus des ID restaurés');
+  });
+
+  await t('deux créations successives produisent deux slots distincts', async () => {
+    W = await neuf();
+    W.slCreate('Un'); W.slCreate('Deux');          // même milliseconde possible
+    const ids = store(W).setlists.map(s => s.id);
+    eq(new Set(ids).size, ids.length, 'identifiants de slot en doublon : ' + ids.join(', '));
+    eq(noms(W).slice(-2), ['Un', 'Deux']);
+  });
+
+  await t('les champs vides ne fuient pas d\'une setlist à l\'autre', async () => {
+    W = await neuf();
+    const idA = W._currentSlotId;
+    W.$('footer-venue').value = 'Ancienne Belgique';
+    W.$('band-name').value = 'Groupe A';
+    W.slCreate('Slot B');
+    eq(W.$('footer-venue').value, '', 'lieu vide sur la nouvelle');
+    W.slSwitch(idA);
+    eq(W.$('footer-venue').value, 'Ancienne Belgique', 'lieu restauré');
+    eq(W.$('band-name').value, 'Groupe A', 'nom du groupe restauré');
+  });
+
+  await t('basculer vers un identifiant inexistant ne casse pas la sauvegarde', async () => {
+    W = await neuf();
+    const idA = W._currentSlotId;
+    W.items = [song({ title: 'Précieuse' })]; W.renderList();
+    W.slSwitch('slot-qui-nexiste-pas');
+    eq(W._currentSlotId, idA, 'le slot courant ne doit pas changer vers un id inconnu');
+    W.items.push(song({ title: 'Ajoutée après' })); W.lsSave();
+    const slot = store(W).setlists.find(s => s.id === W._currentSlotId);
+    ok(slot, 'le slot courant doit toujours exister dans le magasin');
+    eq(slot.items.length, 2, 'la sauvegarde doit continuer de fonctionner');
+  });
+
+  grp('Renommage et suppression');
+
+  await t('slRename change le nom sans toucher au contenu ni au nom du groupe', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'X' })]; W.$('band-name').value = 'Mon Groupe'; W.lsSave();
+    const id = W._currentSlotId;
+    W.slRename(id, 'Tournée été');
+    const slot = store(W).setlists.find(s => s.id === id);
+    eq(slot.name, 'Tournée été');
+    eq(slot.bandName, 'Mon Groupe', 'le nom du groupe ne doit pas être écrasé');
+    eq(slot.items.length, 1, 'le contenu ne doit pas bouger');
+    eq(W.$('sl-indicator-lbl').textContent, 'Tournée été', 'indicateur mis à jour');
+  });
+
+  await t('lsSave ne réécrit jamais le nom du slot', async () => {
+    W = await neuf();
+    const id = W._currentSlotId;
+    W.slRename(id, 'Nom choisi');
+    W.$('band-name').value = 'Autre Groupe';
+    W.items = [song({ title: 'Y' })]; W.lsSave();
+    eq(store(W).setlists.find(s => s.id === id).name, 'Nom choisi',
+       'le nom du slot doit survivre à une sauvegarde');
+  });
+
+  await t('supprimer une autre setlist laisse la courante intacte', async () => {
+    W = await neuf();
+    const idA = W._currentSlotId;
+    W.items = [song({ title: 'Courante' })]; W.renderList();
+    W.slCreate('À supprimer');
+    const idB = W._currentSlotId;
+    W.slSwitch(idA);
+    W.slDelete(idB);
+    eq(store(W).setlists.length, 1);
+    eq(W._currentSlotId, idA, 'le slot courant ne change pas');
+    eq(W.items.map(i => i.title), ['Courante'], 'contenu courant préservé');
+  });
+
+  await t('supprimer la setlist courante bascule sur une autre et charge son contenu', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'Première' })]; W.renderList();
+    const idA = W._currentSlotId;
+    W.slCreate('Seconde');
+    W.items = [song({ title: 'Seconde-titre' })]; W.renderList();
+    const idB = W._currentSlotId;
+    W.slDelete(idB);
+    eq(W._currentSlotId, idA, 'bascule sur la setlist restante');
+    eq(store(W).current, idA, 'store.current suit');
+    eq(W.items.map(i => i.title), ['Première'], 'le contenu de la restante doit être chargé');
+    eq(store(W).setlists.length, 1);
+  });
+
+  await t('la dernière setlist ne peut pas être supprimée', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'Seule' })]; W.renderList();
+    W.slDelete(W._currentSlotId);
+    eq(store(W).setlists.length, 1, 'il doit rester une setlist');
+    eq(W.items.map(i => i.title), ['Seule'], 'contenu inchangé');
+  });
+
+  await t('supprimer vide les modifications en attente dans la setlist courante', async () => {
+    W = await neuf();
+    const idA = W._currentSlotId;
+    W.slCreate('Autre');
+    const idB = W._currentSlotId;
+    W.slSwitch(idA);
+    W.items = [song({ title: 'Modif non encore sauvegardée' })];   // pas de renderList : rien n'est planifié
+    W.slDelete(idB);
+    eq(store(W).setlists.find(s => s.id === idA).items.map(i => i.title),
+       ['Modif non encore sauvegardée'], 'la suppression doit d\'abord vider les modifs en attente');
+  });
+
+  grp('Backup JSON');
+
+  await t('l\'export produit un magasin complet et relisible', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'Été « n°1 » & co', artist:'Ñuñez', duration:'4:20',
+      comment:'note', privateUrl:'https://y.tu/x', privateNote:'ligne 1\nligne 2' })];
+    W.$('band-name').value = 'Groupe Export'; W.lsSave();
+    W.slCreate('Deuxième');
+    const b = await capteBackup(W);
+    eq(b.setlists.length, 2, 'les deux setlists doivent être dans le backup');
+    const s1 = b.setlists[0];
+    eq(s1.bandName, 'Groupe Export');
+    eq(s1.items[0].title, 'Été « n°1 » & co', 'caractères spéciaux préservés');
+    eq(s1.items[0].privateNote, 'ligne 1\nligne 2', 'note multiligne préservée (JSON)');
+    eq(b.current, W._currentSlotId, 'le slot courant est indiqué');
+  });
+
+  await t('restauration « remplacer tout » : le magasin et l\'écran suivent', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'Locale' })]; W.lsSave();
+    const backup = { current: 'imp2', setlists: [
+      { id:'imp1', name:'Importée A', items:[song({title:'A1'})], headerBadges:[{id:'hb1',label:'X'}],
+        bandName:'Groupe A', footerVenue:'Lieu A', savedAt:'' },
+      { id:'imp2', name:'Importée B', items:[song({title:'B1'}),song({title:'B2'})],
+        headerBadges:[{id:'hb2',label:'Y'}], bandName:'Groupe B', footerVenue:'', savedAt:'' }]};
+    await deposeBackup(W, backup);
+    ok(W._pendingImport, 'le fichier doit être en attente de confirmation');
+    W.slImportApply(true);
+    eq(noms(W), ['Importée A', 'Importée B'], 'le magasin doit être remplacé');
+    eq(W._currentSlotId, 'imp2', 'le slot courant vient du backup');
+    eq(W.items.map(i => i.title), ['B1', 'B2'], 'le contenu doit être affiché');
+    eq(W.$('band-name').value, 'Groupe B');
+    eq(W.$('footer-venue').value, '', 'un lieu vide dans le backup doit vider le champ');
+  });
+
+  await t('restauration « ajouter aux existantes » : rien n\'est perdu, pas d\'id en double', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'Locale' })]; W.lsSave();
+    const idLocal = W._currentSlotId;
+    const backup = { current:'x1', setlists: [
+      { id:idLocal, name:'Même id que la locale', items:[song({title:'Conflit'})],
+        headerBadges:[], bandName:'B', footerVenue:'', savedAt:'' },
+      { id:'x2', name:'Sans conflit', items:[], headerBadges:[], bandName:'C', footerVenue:'', savedAt:'' }]};
+    await deposeBackup(W, backup);
+    W.slImportApply(false);
+    const st = store(W);
+    eq(st.setlists.length, 3, 'les trois setlists doivent coexister');
+    const ids = st.setlists.map(s => s.id);
+    eq(new Set(ids).size, 3, 'identifiants en double après fusion : ' + ids.join(', '));
+    eq(st.setlists.find(s => s.id === idLocal).items.map(i => i.title), ['Locale'],
+       'la setlist locale ne doit pas être écrasée par celle du backup');
+    eq(W._currentSlotId, idLocal, 'la fusion ne doit pas changer de setlist courante');
+  });
+
+  await t('un backup illisible ou mal formé est refusé sans rien casser', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'Intacte' })]; W.lsSave();
+    // savedAt bouge avec l'autosave : on compare le contenu, pas l'horodatage
+    const signature = W => JSON.stringify(store(W).setlists.map(x => [x.id, x.name, x.items, x.bandName]));
+    const avant = signature(W);
+    await deposeBackup(W, '{ceci nest pas du json');
+    eq(W._pendingImport, null, 'un JSON cassé ne doit pas être mis en attente');
+    await deposeBackup(W, { pasDeSetlists: true });
+    eq(W._pendingImport, null, 'un format inattendu ne doit pas être mis en attente');
+    await deposeBackup(W, { setlists: [] });
+    eq(W._pendingImport, null, 'un backup vide ne doit pas être mis en attente');
+    eq(signature(W), avant, 'le magasin doit être intact');
+    eq(W.items.map(i => i.title), ['Intacte'], 'la setlist à l\'écran doit être intacte');
+  });
+
+  await t('un slot sans items ne laisse pas le contenu de la setlist précédente', async () => {
+    W = await neuf();
+    W.items = [song({ title: 'Ancienne' }), song({ title: 'Ancienne 2' })]; W.renderList();
+    const backup = { current:'vide1', setlists: [
+      { id:'vide1', name:'Slot incomplet', bandName:'G', footerVenue:'', savedAt:'' }]};  // ni items ni badges
+    await deposeBackup(W, backup);
+    W.slImportApply(true);
+    eq(W.items, [], 'un slot sans items doit afficher une setlist vide, pas l\'ancienne');
+  });
+
+  grp('Interaction avec les sessions collaboratives');
+
+  await t('créer ou changer de setlist pendant une session demande confirmation', async () => {
+    W = await neuf();
+    // socket simulée : l'app ne doit regarder que readyState
+    W.win.WebSocket = class { static OPEN = 1; constructor(){ this.readyState = 1; } send(){} close(){ this.readyState = 3; } };
+    W.wsConnect ? null : null;
+    W.win.wsConnect('testsl');
+    await waitFor(() => W.ws && W.ws.readyState === 1, 'socket simulée non ouverte', 2000);
+    let demande = 0;
+    W.win.confirm = () => { demande++; return false; };
+    const avant = W._currentSlotId;
+    W.slCreate('Refusée');
+    eq(demande, 1, 'une confirmation doit être demandée');
+    eq(W._currentSlotId, avant, 'un refus ne doit rien créer');
+    eq(store(W).setlists.length, 1, 'aucun slot ajouté');
+    W.win.confirm = () => { demande++; return true; };
+    W.slCreate('Acceptée');
+    eq(demande, 2);
+    eq(store(W).setlists.length, 2, 'la création doit avoir lieu après acceptation');
+    eq(W.ws, null, 'la session WS doit avoir été fermée');
+  });
+
+  localStorage.clear();
+  finish();
+})();
+</script>
+</body>
+</html>

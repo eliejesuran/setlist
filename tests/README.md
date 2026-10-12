@@ -7,6 +7,7 @@ Trois batteries complémentaires, sans dépendance à installer.
 | Serveur | `server.test.mjs` | `node --test "tests/*.test.mjs"` | 16 |
 | Front | `front.html` | navigateur, `/tests/front` | 41 |
 | Collaboratif | `collab.html` | navigateur + serveur local, `/tests/collab` | 15 |
+| Multi-setlist | `multisetlist.html` | navigateur, `/tests/multisetlist` | 18 |
 
 ## Serveur
 
@@ -65,6 +66,15 @@ l'adresse cible est réécrite vers `127.0.0.1`.
   le DOM, pour ne pas dépendre des minuteurs.
 - `window.__client`, `window.__scene` et `?manuel=1` permettent de rejouer un scénario à la
   main depuis la console.
+
+## Multi-setlist (`/tests/multisetlist`)
+
+Pilote les fonctions réelles de la feature : création, bascule, renommage, suppression
+(dont le refus de supprimer la dernière et le flush des modifications en attente), backup
+JSON (export, « remplacer tout », « ajouter aux existantes » avec identifiants en conflit,
+fichiers illisibles ou mal formés), slot incomplet, et la confirmation demandée quand une
+session collaborative est ouverte. Aucun téléchargement réel : `URL.createObjectURL` est
+intercepté pour lire le blob exporté.
 
 ## Limites connues du format texte (verrouillées par des tests)
 

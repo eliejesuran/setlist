@@ -689,15 +689,13 @@ const LS_KEY_V1  = 'ssbbb_setlist_v1';   // legacy
 const LS_KEY_V2  = 'ssbbb_setlists_v2';  // multi-setlist
 
 function _slApplyState(state){
-  // Deep clone pour éviter toute référence partagée avec le store en mémoire
-  if(Array.isArray(state.items)){
-    items=JSON.parse(JSON.stringify(state.items));
-    items.forEach(item=>{const n=parseInt((item.id||'').replace(/\D/g,''));if(n>=nextId)nextId=n+1;});
-  }
-  if(Array.isArray(state.headerBadges)){
-    headerBadges=JSON.parse(JSON.stringify(state.headerBadges));
-    headerBadges.forEach(b=>{const n=parseInt((b.id||'').replace(/\D/g,''));if(n>=nextBadgeId)nextBadgeId=n+1;});
-  }
+  // Deep clone pour éviter toute référence partagée avec le store en mémoire.
+  // Un champ absent vaut « vide » : sans ça, un slot incomplet (backup bricolé,
+  // entrée corrompue) héritait du contenu de la setlist précédente.
+  items = Array.isArray(state.items) ? JSON.parse(JSON.stringify(state.items)) : [];
+  items.forEach(item=>{const n=parseInt((item.id||'').replace(/\D/g,''));if(n>=nextId)nextId=n+1;});
+  headerBadges = Array.isArray(state.headerBadges) ? JSON.parse(JSON.stringify(state.headerBadges)) : [];
+  headerBadges.forEach(b=>{const n=parseInt((b.id||'').replace(/\D/g,''));if(n>=nextBadgeId)nextBadgeId=n+1;});
   if(state.bandName    !== undefined) $('band-name').value    = state.bandName;
   if(state.footerVenue !== undefined) $('footer-venue').value = state.footerVenue;
   // Restaurer le nom de session (share-session-name) depuis le slot
@@ -770,11 +768,14 @@ function slSwitch(id){
   clearTimeout(lsTimer);
   lsSave();
   const store = slGetAll();
+  // Vérifier AVANT de muter quoi que ce soit : sinon un id inconnu laissait
+  // _currentSlotId et store.current pointer dans le vide, et toute sauvegarde
+  // ultérieure échouait en silence.
+  const slot = store.setlists.find(s=>s.id===id);
+  if(!slot){ console.warn('slSwitch: slot introuvable', id); return; }
   store.current = id;
   _slPersist(store);
   _currentSlotId = id;
-  const slot = store.setlists.find(s=>s.id===id);
-  if(!slot)return;
   _slApplyState(slot);
   _undoStack=[]; updateUndoBtn();
   renderBadges(); renderList(); syncFooter();
