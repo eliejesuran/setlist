@@ -112,8 +112,12 @@ footer{border-top:1px solid var(--border);padding:20px 40px;display:flex;justify
           <input type="checkbox" id="pdf-include-private-note" style="accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
           <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--white);">Note privée</span>
         </label>
-        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 0;border-top:1px solid var(--border);" title="Polices de la liste réduites de 30 % pour tenir sur moins de pages">
-          <input type="checkbox" id="pdf-squeeze" style="accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);" title="Polices de la liste réduites de 15 % pour tenir sur moins de pages">
+          <input type="checkbox" id="pdf-squeeze-15" style="accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
+          <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--white);">Squeeze (−15 %)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 0;" title="Polices de la liste réduites de 30 % pour tenir sur moins de pages">
+          <input type="checkbox" id="pdf-squeeze-30" style="accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
           <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--white);">Squeeze (−30 %)</span>
         </label>
       </div>
@@ -333,9 +337,9 @@ function buildPdfHtml(mode){
   const includeComment=$('pdf-include-comment').checked;
   const includePrivateUrl=$('pdf-include-private-url').checked;
   const includePrivateNote=$('pdf-include-private-note').checked;
-  // Squeeze : polices et espacements verticaux de la liste ×0.7 (en-tête et pied inchangés)
-  const squeeze=$('pdf-squeeze').checked;
-  const K=squeeze?0.7:1;
+  // Squeeze : polices et espacements verticaux de la liste ×0.85 ou ×0.7 (en-tête et pied inchangés)
+  const K=$('pdf-squeeze-30').checked?0.7:$('pdf-squeeze-15').checked?0.85:1;
+  const squeeze=K<1;
   const sq=n=>+(n*K).toFixed(2);
   const BG    =isLight?'#ffffff':'#0a0a0a';
   const TEXT  =isLight?'#111111':'#f0ece0';
@@ -640,6 +644,10 @@ $('btn-pdf-opts').addEventListener('click', e=>{
 });
 document.addEventListener('click', ()=>{ const p=$('pdf-opts-panel'); if(p) p.style.display='none'; });
 $('pdf-opts-panel').addEventListener('click', e=>e.stopPropagation());
+// Squeeze −15 % / −30 % : exclusifs
+['pdf-squeeze-15','pdf-squeeze-30'].forEach((id,i,ids)=>$(id).addEventListener('change',e=>{
+  if(e.target.checked) $(ids[1-i]).checked=false;
+}));
 // ══ BAND NAME SYNC ══
 $('band-name').addEventListener('input',syncFooter);
 

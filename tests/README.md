@@ -5,7 +5,7 @@ Trois batteries complémentaires, sans dépendance à installer.
 | Suite | Fichier | Lancement | Tests |
 |---|---|---|---|
 | Serveur | `server.test.mjs` | `node --test "tests/*.test.mjs"` | 16 |
-| Front | `front.html` | navigateur, `/tests/front` | 43 |
+| Front | `front.html` | navigateur, `/tests/front` | 44 |
 | Collaboratif | `collab.html` | navigateur + serveur local, `/tests/collab` | 15 |
 
 ## Serveur

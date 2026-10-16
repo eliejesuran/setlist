@@ -268,6 +268,8 @@ const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e
   /* ─────────────── PDF ─────────────── */
   grp('PDF');
   W=await reload();
+  // Squeeze : 0 (aucun), 15 ou 30 — les deux cases s'excluent
+  const niveau=n=>{ W.$('pdf-squeeze-15').checked=n===15; W.$('pdf-squeeze-30').checked=n===30; };
   await t('échappement HTML de tout texte utilisateur',()=>{
     const balise = '<scr'+'ipt>alert(1)<\/scr'+'ipt>';   // concaténé : un </scr+ipt> littéral couperait cette page
     W.items=[song({title:'Rock & <img src=x onerror=alert(1)>',artist:'A & B',
@@ -297,18 +299,18 @@ const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e
      'pdf-include-private-url','pdf-include-private-note'].forEach(id=>W.$(id).checked=true);
     const tgt=W.$('pdf-tgt'); tgt.style.width='794px';
     try{
-      for(const sqz of [false,true]) for(const [nom,jeu] of Object.entries(jeux)){
-        W.$('pdf-squeeze').checked=sqz; W.items=jeu();
+      for(const n of [0,15,30]) for(const [nom,jeu] of Object.entries(jeux)){
+        niveau(n); W.items=jeu();
         tgt.innerHTML=W.buildPdfHtml('light').html;
         await W.document.fonts.ready; await sleep(60);
-        const pages=[...tgt.firstElementChild.children], cas=nom+(sqz?' (squeeze)':'');
+        const pages=[...tgt.firstElementChild.children], cas=nom+(n?` (−${n} %)`:'');
         ok(pages.length>=2,cas+' : ce jeu de données doit tenir sur plusieurs pages');
         // On mesure la page et non la zone de contenu : en flex:1 celle-ci grandit avec ce
         // qu'elle contient et pousse le pied de page hors de la page, sans jamais « déborder ».
         pages.forEach((p,i)=>ok(p.scrollHeight<=p.clientHeight+1,
           `${cas}, page ${i+1} : pied de page rogné (${p.scrollHeight}px dans ${p.clientHeight}px)`));
       }
-    }finally{ W.$('pdf-squeeze').checked=false; tgt.innerHTML=''; tgt.style.width=''; }
+    }finally{ niveau(0); tgt.innerHTML=''; tgt.style.width=''; }
   });
   await t('numérotation continue d\'une page à l\'autre, séparateurs non numérotés',()=>{
     W.items=[]; for(let k=0;k<30;k++) W.items.push(song({title:'T'+(k+1),duration:'3:00'}));
@@ -334,26 +336,40 @@ const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e
     ok(h.includes('Peggy Lee')&&h.includes('3:45')&&h.includes('intro')&&h.includes('capo 2'),
        'les champs cochés doivent apparaître');
   });
-  await t('squeeze : polices réduites de 30 % et moins de pages',()=>{
-    // 16 + 8 titres : le set 2 part en page 2 en normal, tout tient sur une page en squeeze
-    W.items=[...Array(16)].map((_,k)=>song({title:'A'+k,duration:'3:00'}));
-    W.items.push({type:'sep',id:'sepB',label:'Set 2'});
-    for(let k=0;k<8;k++) W.items.push(song({title:'B'+k,duration:'3:00'}));
-    const html=sqz=>{ W.$('pdf-squeeze').checked=sqz; return W.buildPdfHtml('light').html; };
+  await t('squeeze : polices réduites de 15 / 30 % et moins de pages',()=>{
+    const html=n=>{ niveau(n); return W.buildPdfHtml('light').html; };
     const nPages=h=>(h.match(/height:1123px/g)||[]).length;
     try{
-      const normal=html(false), serre=html(true);
-      ok(normal.includes('font-size:42px'),'titre à 42px sans squeeze');
-      ok(serre.includes('font-size:29.4px')&&!serre.includes('font-size:42px'),'titre à 29.4px (−30 %) en squeeze');
-      eq([nPages(normal),nPages(serre)],[2,1],'pages sans / avec squeeze');
-    }finally{ W.$('pdf-squeeze').checked=false; }
+      // 20 titres : 2 pages en normal, 1 dès −15 %
+      W.items=[...Array(20)].map((_,k)=>song({title:'T'+k,duration:'3:00'}));
+      const [h0,h15,h30]=[0,15,30].map(html);
+      ok(h0.includes('font-size:42px'),'titre à 42px sans squeeze');
+      ok(h15.includes('font-size:35.7px')&&!h15.includes('font-size:42px'),'titre à 35.7px (−15 %)');
+      ok(h30.includes('font-size:29.4px')&&!h30.includes('font-size:42px'),'titre à 29.4px (−30 %)');
+      eq([h0,h15,h30].map(nPages),[2,1,1],'20 titres : pages normal / −15 % / −30 %');
+      // 16 + 8 titres : le set 2 part en page 2, sauf à −30 % où tout tient sur une page
+      W.items=[...Array(16)].map((_,k)=>song({title:'A'+k,duration:'3:00'}));
+      W.items.push({type:'sep',id:'sepB',label:'Set 2'});
+      for(let k=0;k<8;k++) W.items.push(song({title:'B'+k,duration:'3:00'}));
+      eq([0,15,30].map(n=>nPages(html(n))),[2,2,1],'16 + 8 titres : pages normal / −15 % / −30 %');
+    }finally{ niveau(0); }
+  });
+  await t('squeeze : −15 % et −30 % s\'excluent',()=>{
+    const a=W.$('pdf-squeeze-15'), b=W.$('pdf-squeeze-30');
+    try{
+      niveau(0);
+      a.click(); eq([a.checked,b.checked],[true,false],'clic sur −15 %');
+      b.click(); eq([a.checked,b.checked],[false,true],'clic sur −30 % : −15 % doit se décocher');
+      a.click(); eq([a.checked,b.checked],[true,false],'clic sur −15 % : −30 % doit se décocher');
+      a.click(); eq([a.checked,b.checked],[false,false],'décocher ne recoche pas l\'autre');
+    }finally{ niveau(0); }
   });
   await t('squeeze : un séparateur ne reste jamais seul en bas de page',()=>{
     // 24 titres remplissent presque la page 1 : le séparateur y tiendrait, pas le titre suivant
     W.items=[...Array(24)].map((_,k)=>song({title:'A'+k,duration:'3:00'}));
     W.items.push({type:'sep',id:'sepB',label:'Set 2'});
     for(let k=0;k<5;k++) W.items.push(song({title:'B'+k,duration:'3:00'}));
-    W.$('pdf-squeeze').checked=true;
+    niveau(30);
     const tgt=W.$('pdf-tgt');
     try{
       tgt.innerHTML=W.buildPdfHtml('light').html;
@@ -361,7 +377,7 @@ const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e
       eq(zones.length,2,'nombre de pages');
       ok(!zones[0].lastElementChild.textContent.includes('Set 2'),'séparateur orphelin en bas de la page 1');
       ok(zones[1].firstElementChild.textContent.includes('Set 2'),'le séparateur doit ouvrir la page 2');
-    }finally{ W.$('pdf-squeeze').checked=false; tgt.innerHTML=''; }
+    }finally{ niveau(0); tgt.innerHTML=''; }
   });
 
   /* ─────────────── Persistance ─────────────── */

@@ -43,7 +43,7 @@ Migration auto depuis `ssbbb_setlist_v1` au premier chargement.
 ## Thèmes
 Cycle `dark-gold`→`sepia`→`light-paper` · suit `prefers-color-scheme` sauf `_themeManualOverride`  
 PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thème · nom `{band}_{badges}_{mode}.pdf`  
-Squeeze (`pdf-squeeze`, non persisté) : liste ×0.7 via `K`/`sq()` (polices, marges verticales, `itemHeight`) · en-tête/pied inchangés · pas de saut au séparateur à 60 %
+Squeeze −15 % / −30 % (`pdf-squeeze-15` / `pdf-squeeze-30`, exclusifs, non persistés) : liste ×0.85 / ×0.7 via `K`/`sq()` (polices, marges verticales, `itemHeight`) · en-tête/pied inchangés · pas de saut au séparateur à 60 %
 
 ## WS Collaboration
 
@@ -89,7 +89,7 @@ Squeeze (`pdf-squeeze`, non persisté) : liste ×0.7 via `K`/`sq()` (polices, ma
 **WS** `wsConnect(id)` · `wsDisconnect()` · `wsPatch()` · `wsApplyState(state,isInit?)` · `_doApplyState(state)` · `wsDoConnect()` · `wsValidateCode(raw)` · `wsRandomId()` · `wsUpdateShareUI()` · `wsUpdatePeersList(names,count)` · `wsUpdateToolbarLabel()` · `wsUpdateTtl()`
 
 ## Tests
-`node --test "tests/*.test.mjs"` (16) · `/tests/front` (43) · `/tests/collab` (15, exige `PORT=3099 RATE_LIMIT_MAX=1000 node server/server.js`).
+`node --test "tests/*.test.mjs"` (16) · `/tests/front` (44) · `/tests/collab` (15, exige `PORT=3099 RATE_LIMIT_MAX=1000 node server/server.js`).
 Détails, pièges et limites assumées du format texte : [tests/README.md](tests/README.md).
 
 ## Backlog actif
