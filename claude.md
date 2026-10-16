@@ -42,7 +42,8 @@ Migration auto depuis `ssbbb_setlist_v1` au premier chargement.
 
 ## Thèmes
 Cycle `dark-gold`→`sepia`→`light-paper` · suit `prefers-color-scheme` sauf `_themeManualOverride`  
-PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thème · nom `{band}_{badges}_{mode}.pdf`
+PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thème · nom `{band}_{badges}_{mode}.pdf`  
+Squeeze (`pdf-squeeze`, non persisté) : liste ×0.7 via `K`/`sq()` (polices, marges verticales, `itemHeight`) · en-tête/pied inchangés · pas de saut au séparateur à 60 %
 
 ## WS Collaboration
 
@@ -57,6 +58,7 @@ PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thèm
 - `{type:'error'}` reçu → toast + `wsDisconnect()` si `SESSION_FULL`
 - Champs vides : appliquer `state.bandName`/`footerVenue` si `!== undefined` (sinon fuite entre slots)
 - PDF : tout texte utilisateur passe par `esc()` avant `tgt.innerHTML`
+- PDF : `itemHeight()` doit rester ≥ hauteur réelle de la ligne (sinon pied de page rogné) — le test front mesure `page.scrollHeight`, pas la zone de contenu · un séparateur part avec le titre suivant
 - Export texte : slot artiste toujours présent (`Titre -  - 3:45 - Note`) · parser conserve slots vides internes · split `/\s-\s/` (espace obligatoire de chaque côté — protège les titres à trait d'union)
 - Séparateur exporté `--- Étiquette ---` (étiquette perdue avant) · `---` ou ligne vide → `— Pause —`
 - Note privée : retours à la ligne encodés `\n` à l'export, restitués à l'import (sinon morceaux fantômes)
@@ -87,7 +89,7 @@ PDF : JPEG qualité 0.92 · scale ×1.5 (dark) / ×2 (light) · fond selon thèm
 **WS** `wsConnect(id)` · `wsDisconnect()` · `wsPatch()` · `wsApplyState(state,isInit?)` · `_doApplyState(state)` · `wsDoConnect()` · `wsValidateCode(raw)` · `wsRandomId()` · `wsUpdateShareUI()` · `wsUpdatePeersList(names,count)` · `wsUpdateToolbarLabel()` · `wsUpdateTtl()`
 
 ## Tests
-`node --test "tests/*.test.mjs"` (16) · `/tests/front` (41) · `/tests/collab` (15, exige `PORT=3099 RATE_LIMIT_MAX=1000 node server/server.js`).
+`node --test "tests/*.test.mjs"` (16) · `/tests/front` (43) · `/tests/collab` (15, exige `PORT=3099 RATE_LIMIT_MAX=1000 node server/server.js`).
 Détails, pièges et limites assumées du format texte : [tests/README.md](tests/README.md).
 
 ## Backlog actif

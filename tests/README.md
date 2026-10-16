@@ -5,7 +5,7 @@ Trois batteries complémentaires, sans dépendance à installer.
 | Suite | Fichier | Lancement | Tests |
 |---|---|---|---|
 | Serveur | `server.test.mjs` | `node --test "tests/*.test.mjs"` | 16 |
-| Front | `front.html` | navigateur, `/tests/front` | 41 |
+| Front | `front.html` | navigateur, `/tests/front` | 43 |
 | Collaboratif | `collab.html` | navigateur + serveur local, `/tests/collab` | 15 |
 
 ## Serveur
@@ -82,8 +82,8 @@ Accents, emoji, guillemets, esperluettes, chevrons, apostrophes, notes privées 
 ## Couverture et angles morts
 
 Couvert : formats de durée, parsing et aller-retour de l'export texte (y compris caractères
-spéciaux et setlist de 20 morceaux), pagination et échappement du PDF (débordement mesuré dans
-le DOM réel), persistance localStorage et migration v1, annulation, protocole WebSocket des deux
+spéciaux et setlist de 20 morceaux), pagination (normale et squeeze) et échappement du PDF (débordement mesuré dans
+le DOM réel, pied de page compris), persistance localStorage et migration v1, annulation, protocole WebSocket des deux
 côtés, et — pour le collaboratif — propagation à plusieurs pairs, intégrité des métadonnées,
 listes de 20 morceaux, coupures réseau des deux côtés, éditions concurrentes, arrivée tardive.
 

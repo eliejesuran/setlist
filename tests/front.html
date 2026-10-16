@@ -285,21 +285,30 @@ const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e
     ok(h.includes('&lt;AB&gt;'),'le lieu doit être échappé');
   });
   await t('aucun débordement de page, champs privés compris (mesure DOM réelle)',async()=>{
-    W.items=[]; for(let k=0;k<20;k++) W.items.push(song({title:'Titre '+(k+1),artist:'Artiste',
-      duration:'3:30',comment:'Note de scène volontairement longue pour forcer un repli sur plusieurs lignes dans la colonne.',
-      privateUrl:'https://youtu.be/abcdefg',privateNote:'Départ en La mineur, attention au break avant le dernier refrain.'}));
+    const jeux={
+      complet:()=>[...Array(20)].map((_,k)=>song({title:'Titre '+(k+1),artist:'Artiste',
+        duration:'3:30',comment:'Note de scène volontairement longue pour forcer un repli sur plusieurs lignes dans la colonne.',
+        privateUrl:'https://youtu.be/abcdefg',privateNote:'Départ en La mineur, attention au break avant le dernier refrain.'})),
+      // artiste + note courte : ligne sous-estimée avant correction (pied de page rogné de 7 px)
+      mixte:()=>[...Array(45)].map((_,k)=>k%3===2 ? song({title:'T'+k,duration:'3:00'})
+        : song({title:'T'+k,artist:'Peggy Lee',duration:'3:00',comment:'intro calme'})),
+    };
     ['pdf-include-timing','pdf-include-artist','pdf-include-comment',
      'pdf-include-private-url','pdf-include-private-note'].forEach(id=>W.$(id).checked=true);
-    const tgt=W.$('pdf-tgt'); tgt.style.width='794px'; tgt.innerHTML=W.buildPdfHtml('light').html;
-    await W.document.fonts.ready; await sleep(60);
-    const pages=[...tgt.firstElementChild.children];
-    ok(pages.length>=2,'ce jeu de données doit tenir sur plusieurs pages');
-    pages.forEach((p,i)=>{
-      const c=p.children[1];
-      ok(c.scrollHeight<=c.clientHeight+1,
-        `page ${i+1} : contenu rogné (${c.scrollHeight}px dans ${c.clientHeight}px)`);
-    });
-    tgt.innerHTML=''; tgt.style.width='';
+    const tgt=W.$('pdf-tgt'); tgt.style.width='794px';
+    try{
+      for(const sqz of [false,true]) for(const [nom,jeu] of Object.entries(jeux)){
+        W.$('pdf-squeeze').checked=sqz; W.items=jeu();
+        tgt.innerHTML=W.buildPdfHtml('light').html;
+        await W.document.fonts.ready; await sleep(60);
+        const pages=[...tgt.firstElementChild.children], cas=nom+(sqz?' (squeeze)':'');
+        ok(pages.length>=2,cas+' : ce jeu de données doit tenir sur plusieurs pages');
+        // On mesure la page et non la zone de contenu : en flex:1 celle-ci grandit avec ce
+        // qu'elle contient et pousse le pied de page hors de la page, sans jamais « déborder ».
+        pages.forEach((p,i)=>ok(p.scrollHeight<=p.clientHeight+1,
+          `${cas}, page ${i+1} : pied de page rogné (${p.scrollHeight}px dans ${p.clientHeight}px)`));
+      }
+    }finally{ W.$('pdf-squeeze').checked=false; tgt.innerHTML=''; tgt.style.width=''; }
   });
   await t('numérotation continue d\'une page à l\'autre, séparateurs non numérotés',()=>{
     W.items=[]; for(let k=0;k<30;k++) W.items.push(song({title:'T'+(k+1),duration:'3:00'}));
@@ -324,6 +333,35 @@ const song=(o={})=>Object.assign({type:'song',id:'s'+Math.floor(Math.random()*1e
     h=W.buildPdfHtml('light').html;
     ok(h.includes('Peggy Lee')&&h.includes('3:45')&&h.includes('intro')&&h.includes('capo 2'),
        'les champs cochés doivent apparaître');
+  });
+  await t('squeeze : polices réduites de 30 % et moins de pages',()=>{
+    // 16 + 8 titres : le set 2 part en page 2 en normal, tout tient sur une page en squeeze
+    W.items=[...Array(16)].map((_,k)=>song({title:'A'+k,duration:'3:00'}));
+    W.items.push({type:'sep',id:'sepB',label:'Set 2'});
+    for(let k=0;k<8;k++) W.items.push(song({title:'B'+k,duration:'3:00'}));
+    const html=sqz=>{ W.$('pdf-squeeze').checked=sqz; return W.buildPdfHtml('light').html; };
+    const nPages=h=>(h.match(/height:1123px/g)||[]).length;
+    try{
+      const normal=html(false), serre=html(true);
+      ok(normal.includes('font-size:42px'),'titre à 42px sans squeeze');
+      ok(serre.includes('font-size:29.4px')&&!serre.includes('font-size:42px'),'titre à 29.4px (−30 %) en squeeze');
+      eq([nPages(normal),nPages(serre)],[2,1],'pages sans / avec squeeze');
+    }finally{ W.$('pdf-squeeze').checked=false; }
+  });
+  await t('squeeze : un séparateur ne reste jamais seul en bas de page',()=>{
+    // 24 titres remplissent presque la page 1 : le séparateur y tiendrait, pas le titre suivant
+    W.items=[...Array(24)].map((_,k)=>song({title:'A'+k,duration:'3:00'}));
+    W.items.push({type:'sep',id:'sepB',label:'Set 2'});
+    for(let k=0;k<5;k++) W.items.push(song({title:'B'+k,duration:'3:00'}));
+    W.$('pdf-squeeze').checked=true;
+    const tgt=W.$('pdf-tgt');
+    try{
+      tgt.innerHTML=W.buildPdfHtml('light').html;
+      const zones=[...tgt.firstElementChild.children].map(p=>p.children[1]);
+      eq(zones.length,2,'nombre de pages');
+      ok(!zones[0].lastElementChild.textContent.includes('Set 2'),'séparateur orphelin en bas de la page 1');
+      ok(zones[1].firstElementChild.textContent.includes('Set 2'),'le séparateur doit ouvrir la page 2');
+    }finally{ W.$('pdf-squeeze').checked=false; tgt.innerHTML=''; }
   });
 
   /* ─────────────── Persistance ─────────────── */
