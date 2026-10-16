@@ -37,9 +37,17 @@ const PONT = `window.__T = {
   slSwitch: typeof slSwitch === 'function' ? slSwitch : undefined,
 };`;
 
-function reload(qs){
+async function reload(qs){
+  const f=document.getElementById('app');
+  // Décharger l'ancien document lui envoie visibilitychange → hidden : l'app vide alors sa
+  // sauvegarde différée PAR-DESSUS le localStorage que le test vient de préparer (seulement si
+  // l'onglet est visible). On le décharge d'abord, puis on restaure ce que le test avait préparé.
+  if(f.src){
+    const prepare={...localStorage};
+    await new Promise(r=>{ f.onload=r; f.src='about:blank'; });
+    localStorage.clear(); for(const [k,v] of Object.entries(prepare)) localStorage.setItem(k,v);
+  }
   return new Promise(res=>{
-    const f=document.getElementById('app');
     f.onload=()=>setTimeout(()=>{
       const d=f.contentWindow.document, sc=d.createElement('script');
       sc.textContent=PONT; d.body.appendChild(sc);
